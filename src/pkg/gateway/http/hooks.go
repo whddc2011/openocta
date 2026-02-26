@@ -2,15 +2,44 @@ package http
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/openclaw/openclaw/pkg/config"
 	"github.com/openclaw/openclaw/pkg/gateway/handlers"
 	"github.com/openclaw/openclaw/pkg/logging"
 )
 
 var hooksLog = logging.Sub("hooks")
+
+// writeHooksError 写入 JSON 格式的 hooks 错误响应。
+func writeHooksError(w http.ResponseWriter, status int, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	b, _ := json.Marshal(map[string]string{"error": message})
+	_, _ = w.Write(b)
+}
+
+// extractHooksToken 从请求中提取 hook 令牌。
+// 优先级：Authorization: Bearer <token> > x-openclaw-token > ?token=<token>（已弃用）。
+// 参考：https://docs.openclaw.ai/zh-CN/automation/webhook
+func extractHooksToken(r *http.Request) string {
+	auth := r.Header.Get("Authorization")
+	if strings.HasPrefix(auth, "Bearer ") {
+		return strings.TrimSpace(strings.TrimPrefix(auth, "Bearer "))
+	}
+	if got := strings.TrimSpace(r.Header.Get("X-OpenClaw-Token")); got != "" {
+		return got
+	}
+	if got := strings.TrimSpace(r.URL.Query().Get("token")); got != "" {
+		hooksLog.Warn("query param ?token= is deprecated; use Authorization: Bearer or x-openclaw-token header")
+		return got
+	}
+	return ""
+}
 
 // hooksPayloadWake is the body for POST /hooks/wake.
 type hooksPayloadWake struct {
@@ -32,39 +61,46 @@ type hooksPayloadAgent struct {
 	TimeoutSeconds *int   `json:"timeoutSeconds"`
 }
 
+// hooksPayloadAlert is the body for POST /hooks/alert.
+// It is designed to be flexible for different third-party alert sources.
+type hooksPayloadAlert struct {
+	// Optional high-level fields
+	AlertID  string `json:"alertId"`
+	Title    string `json:"title"`
+	Message  string `json:"message"`
+	Severity string `json:"severity"`
+	Source   string `json:"source"`
+	// Arbitrary original payload from the alert source
+	Data map[string]interface{} `json:"data"`
+}
+
 func (s *Server) handleHooks(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
+	if r.Method != "POST" {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 	ctx := s.ctx
 	if ctx == nil || ctx.Config == nil || ctx.Config.Hooks == nil {
-		http.Error(w, "hooks not configured", http.StatusNotFound)
+		writeHooksError(w, http.StatusNotFound, "hooks not configured")
 		return
 	}
 	cfg := ctx.Config.Hooks
+
+	// 1) 若 HooksConfig.Enabled 为 false，直接返回 403
 	if cfg.Enabled != nil && !*cfg.Enabled {
-		http.Error(w, "hooks disabled", http.StatusNotFound)
+		writeHooksError(w, http.StatusForbidden, "hooks disabled")
 		return
 	}
-	token := ""
+
+	// 2) 若配置了 Token，则从请求头（及查询参数）获取并校验
 	if cfg.Token != nil {
-		token = strings.TrimSpace(*cfg.Token)
-	}
-	if token != "" {
-		auth := r.Header.Get("Authorization")
-		got := ""
-		if strings.HasPrefix(auth, "Bearer ") {
-			got = strings.TrimSpace(strings.TrimPrefix(auth, "Bearer "))
-		}
-		if got == "" {
-			got = strings.TrimSpace(r.Header.Get("X-OpenClaw-Token"))
-		}
-		if got != token {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			_, _ = w.Write([]byte(`{"error":"unauthorized"}`))
-			return
+		token := strings.TrimSpace(*cfg.Token)
+		if token != "" {
+			got := extractHooksToken(r)
+			if got != token {
+				writeHooksError(w, http.StatusUnauthorized, "unauthorized")
+				return
+			}
 		}
 	}
 
@@ -87,6 +123,9 @@ func (s *Server) handleHooks(w http.ResponseWriter, r *http.Request) {
 		return
 	case "agent":
 		s.handleHooksAgent(w, r, ctx)
+		return
+	case "alert":
+		s.handleHooksAlert(w, r, ctx)
 		return
 	}
 	// Try mapping by path (config.HookMappingConfig)
@@ -238,4 +277,155 @@ func (s *Server) handleHooksAgentWithMapping(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// handleHooksAlert handles POST /hooks/alert.
+// It creates a new session key for this alert, saves session info to sessions.json,
+// then invokes chat.send to analyze and handle the alert.
+func (s *Server) handleHooksAlert(w http.ResponseWriter, r *http.Request, ctx *handlers.Context) {
+	if ctx == nil || ctx.InvokeMethod == nil {
+		hooksLog.Warn("hooks alert not available (InvokeMethod not configured)")
+		http.Error(w, "alert hook not available", http.StatusNotImplemented)
+		return
+	}
+
+	var body hooksPayloadAlert
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "failed to read body", http.StatusBadRequest)
+		return
+	}
+	rawStr := strings.TrimSpace(string(bodyBytes))
+	if rawStr == "" {
+		http.Error(w, "empty body", http.StatusBadRequest)
+		return
+	}
+	// 优先尝试按 hooksPayloadAlert 解析；如果结构不匹配或没有 message 字段，
+	// 则将原始内容整体作为 message，提升对不同第三方告警体的兼容性。
+	if err := json.Unmarshal(bodyBytes, &body); err != nil {
+		body.Message = rawStr
+	} else if strings.TrimSpace(body.Message) == "" {
+		body.Message = rawStr
+	}
+
+	// Build a descriptive prompt for the agent to analyze this alert.
+	alertPrompt := buildAlertPrompt(body)
+
+	// Generate a new sessionKey for this alert:
+	// agent:main:alert:<UUID>
+	alertUUID := uuid.New().String()
+	sessionKey := fmt.Sprintf("agent:main:alert:%s", alertUUID)
+
+	// 1) Create/reset session in sessions.json via sessions.reset
+	resetParams := map[string]interface{}{
+		"key": sessionKey,
+	}
+	ok, payload, errShape := ctx.InvokeMethod("sessions.reset", resetParams)
+	if !ok || errShape != nil {
+		hooksLog.Warn("sessions.reset failed for alert sessionKey=%s err=%v", sessionKey, errShape)
+		http.Error(w, "failed to create alert session", http.StatusInternalServerError)
+		return
+	}
+
+	// Try to extract canonical sessionKey and sessionId from response (best-effort).
+	var sessionID string
+	if m, ok := payload.(map[string]interface{}); ok {
+		if keyVal, ok := m["key"].(string); ok && keyVal != "" {
+			sessionKey = keyVal
+		}
+		if entry, ok := m["entry"].(map[string]interface{}); ok {
+			if sid, ok := entry["sessionId"].(string); ok {
+				sessionID = sid
+			}
+		}
+	}
+
+	// 2) Call chat.send to analyze this alert using the new session.
+	chatParams := map[string]interface{}{
+		"message":    alertPrompt,
+		"sessionKey": sessionKey,
+	}
+	ok, payload, errShape = ctx.InvokeMethod("chat.send", chatParams)
+	if !ok || errShape != nil {
+		hooksLog.Warn("chat.send failed for alert sessionKey=%s err=%v", sessionKey, errShape)
+		http.Error(w, "failed to dispatch alert to agent", http.StatusInternalServerError)
+		return
+	}
+
+	runID := ""
+	if m, ok := payload.(map[string]interface{}); ok {
+		if rid, ok := m["runId"].(string); ok {
+			runID = rid
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusAccepted)
+	// Return runId and sessionKey for tracking; sessionId is optional.
+	resp := map[string]interface{}{
+		"runId":      runID,
+		"sessionKey": sessionKey,
+	}
+	if sessionID != "" {
+		resp["sessionId"] = sessionID
+	}
+	_ = json.NewEncoder(w).Encode(resp)
+}
+
+// buildAlertPrompt constructs an analysis prompt for the agent from the alert payload.
+func buildAlertPrompt(body hooksPayloadAlert) string {
+	title := strings.TrimSpace(body.Title)
+	if title == "" {
+		title = "未命名告警"
+	}
+	severity := strings.TrimSpace(body.Severity)
+	if severity == "" {
+		severity = "unknown"
+	}
+	source := strings.TrimSpace(body.Source)
+	if source == "" {
+		source = "unknown"
+	}
+	message := strings.TrimSpace(body.Message)
+
+	// Serialize Data for extra context (best-effort).
+	var dataJSON string
+	if body.Data != nil {
+		if b, err := json.MarshalIndent(body.Data, "", "  "); err == nil {
+			dataJSON = string(b)
+		}
+	}
+
+	builder := &strings.Builder{}
+	builder.WriteString("你是一个资深 SRE/运维告警分析助手。")
+	builder.WriteString("下面是一条来自监控/告警系统的告警事件，请你：")
+	builder.WriteString("1）识别可能的根因；2）评估影响范围和紧急程度；3）给出分步骤排查建议；")
+	builder.WriteString("4）如有需要，给出临时缓解措施和后续优化建议。")
+	builder.WriteString("请用简体中文回答，并用结构化的小标题组织输出。\n\n")
+
+	builder.WriteString("【告警标题】\n")
+	builder.WriteString(title + "\n\n")
+
+	builder.WriteString("【严重级别】\n")
+	builder.WriteString(severity + "\n\n")
+
+	builder.WriteString("【来源系统】\n")
+	builder.WriteString(source + "\n\n")
+
+	if body.AlertID != "" {
+		builder.WriteString("【告警ID】\n")
+		builder.WriteString(strings.TrimSpace(body.AlertID) + "\n\n")
+	}
+
+	if message != "" {
+		builder.WriteString("【告警描述】\n")
+		builder.WriteString(message + "\n\n")
+	}
+
+	if dataJSON != "" {
+		builder.WriteString("【原始数据(JSON)】\n")
+		builder.WriteString(dataJSON + "\n")
+	}
+
+	return builder.String()
 }

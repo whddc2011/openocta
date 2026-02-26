@@ -1,15 +1,16 @@
 # OctopusClaw - 快速启动、编译、构建镜像
 # 用法: make [target]
 
-.PHONY: help run build build-backend build-frontend docker-build clean test
+.PHONY: help run run-all run-ui build build-backend build-frontend docker-build clean test
 
 # 默认目标
 help:
 	@echo "OctopusClaw Makefile"
 	@echo ""
 	@echo "  快速启动:"
-	@echo "    make run           - 构建后端并启动 Gateway（端口 18789）"
-	@echo "    make run-ui         - 仅启动前端开发服务器（端口 5173）"
+	@echo "    make run           - 构建后端并启动 Gateway（端口 18789，托管前端）"
+	@echo "    make run-all       - 一键启动前后端：构建 + 启动 Gateway + 启动前端开发服务器（5173）"
+	@echo "    make run-ui        - 仅启动前端开发服务器（端口 5173）"
 	@echo ""
 	@echo "  编译:"
 	@echo "    make build         - 编译后端 + 构建前端（产出: src/openclaw, dist/control-ui）"
@@ -24,9 +25,9 @@ help:
 	@echo "    make test          - 运行后端与前端测试"
 	@echo "    make clean         - 清理构建产物"
 
-# 编译后端（产出到 src/openocta）
+# 编译后端（产出到 src/openclaw）
 build-backend:
-	cd src && go build -o openocta ./cmd/openocta
+	cd src && go build -o openclaw ./cmd/openclaw
 
 # 构建前端（产出到 dist/control-ui）
 build-frontend:
@@ -35,9 +36,16 @@ build-frontend:
 # 同时编译后端与前端
 build: build-backend build-frontend
 
-# 启动 Gateway：先 build，再运行
+# 启动 Gateway：先 build，再运行（托管 dist/control-ui）
 run: build-backend
-	cd src && ./openocta gateway run
+	cd src && ./openclaw gateway run
+
+# 一键启动前后端：构建 + 启动 Gateway + 启动前端开发服务器
+run-all: build
+	@echo ">>> 启动 Gateway（端口 18789）..."
+	@(cd src && ./openclaw gateway run) & B=$$!; \
+	(cd ui && pnpm dev); \
+	kill $$B 2>/dev/null || true
 
 # 仅启动前端开发服务器（需后端 Gateway 另行运行）
 run-ui:
@@ -56,6 +64,6 @@ test:
 
 # 清理构建产物
 clean:
-	rm -f src/openocta
+	rm -f src/openclaw
 	rm -rf dist/control-ui
 	rm -rf ui/node_modules ui/dist

@@ -86,6 +86,7 @@ func New(ctx context.Context, opts Options) (*Runtime, error) {
 			}
 		}
 	}
+	// todo: 生产环境建议去掉，仅用于开发环境
 	//apiOpts.OTEL = api.OTELConfig{
 	//	Enabled:     true,
 	//	ServiceName: "openclaw",

@@ -53,6 +53,27 @@
 
 ---
 
+## 探索与扩展
+
+通过开放的 **Skill**、**Tools**、**MCP**、**Channel** 消息渠道以及 **Webhooks**，可自由对接各类数据平台与来源，将 Octopus 打造成能适应多种业务场景与环境的多面助手。
+
+| 扩展点 | 说明 | 典型用途 |
+|--------|------|----------|
+| **Skill** | 领域知识与指令的 Markdown 描述，按工作区/配置加载，在会话中按需匹配 | 运维手册、K8s 操作、故障排查流程、团队规范等 |
+| **Tools** | Agent 可调用的函数，内置 bash/文件/webfetch 等，可扩展 Gateway 能力与自定义工具 | 执行命令、读写配置、调用内部 API、查询 CMDB/工单 |
+| **MCP** | Model Context Protocol，将外部服务（Prometheus、Grafana、数据库等）以工具形式暴露给 Agent | 指标查询、告警拉取、日志检索、知识库检索 |
+| **Channel** | 消息渠道（钉钉、飞书、WebSocket 等），将 Agent 能力接入 IM、工单、告警平台 | 群聊/私聊触发、告警自动分析、工单流转与回复 |
+| **Webhooks** | 通过 `/hooks/wake`、`/hooks/agent`、`/hooks/alert` 等 HTTP 端点，从外部系统主动推送事件给主会话或独立会话 | 外部监控/告警、CI/CD 事件、第三方系统回调触发自动分析或处理 |
+| **Middleware（agentsdk-go）** | 基于 agentsdk-go 的 6 段 Middleware 链（Before/After Agent/Model/Tool），可按阶段插入自定义治理逻辑 | 统一审计日志、限流与配额、敏感信息脱敏、模型输出重写、工具调用白名单/黑名单等 |
+| **Sandbox（agentsdk-go）** | agentsdk-go 提供的文件/网络/资源沙箱隔离能力，可按 ProjectRoot 和白名单路径限制工具访问范围，并限制 CPU/内存/磁盘使用 | 在允许 Agent 调用 bash/文件/Web 工具的同时，确保只在受控目录和受控网络内执行，降低误操作与安全风险 |
+
+通过组合上述能力，可将监控、日志、配置、CMDB、工单、知识库等不同来源的数据接入同一套 Agent，形成**集中大脑**，支撑根因分析、影响面评估、自动化响应等企业级场景：
+
+- **Webhooks + Channels**：把告警、CI/CD、业务事件统一经由 `/hooks/*` 进入主会话，再通过消息渠道（IM/工单系统）向人或系统反馈，实现「事件驱动」的自动分析与闭环。
+- **Middleware + Sandbox**：在更多落地场景中为 Tools/MCP 调用增加安全与可观测防线（审计、限流、脱敏、隔离），适合金融、政企等对合规要求高的环境。
+
+---
+
 ## 项目结构
 
 ```
@@ -78,24 +99,47 @@ OctopusClaw/
 
 ## 快速开始
 
+### 一键快速启动（推荐）
+
+```bash
+# 一键构建并启动前后端（Gateway 18789 + 前端开发服务器 5173）
+make run-all
+```
+
+首次运行会构建后端与前端，然后同时启动 Gateway 与前端开发服务器。访问 `http://localhost:5173` 使用 Control UI。
+
 ### 1. 构建与运行后端
 
 ```bash
-# 进入后端目录
+# 使用 Makefile（推荐）
+make run
+
+# 或手动构建
 cd src
-
-# 构建
 go build -o openclaw ./cmd/openclaw
-
-# 启动 Gateway（默认端口 18789）
-go run ./cmd/openclaw gateway run
-# 或
 ./openclaw gateway run
 ```
 
-Gateway 启动后，默认在 `http://127.0.0.1:18789` 提供 HTTP 与 WebSocket。若已将 Control UI 构建产物放到 Gateway 的静态目录，则可通过同一端口访问 Control UI。
+Gateway 启动后，默认在 `http://127.0.0.1:18789` 提供 HTTP 与 WebSocket。若已将 Control UI 构建产物放到 `dist/control-ui`，则可通过同一端口访问 Control UI。
 
-### 2. 开发 / 运行前端（可选）
+### 2. 前端目录与启动方式
+
+Gateway 托管前端时，会按以下顺序查找 `dist/control-ui` 目录：
+
+| 优先级 | 路径 |
+|--------|------|
+| 1 | 环境变量 `OPENOCTA_FRONTEND_DIR` 指定的目录（若未以 `control-ui` 结尾则自动追加） |
+| 2 | 当前工作目录下的 `./dist/control-ui` |
+| 3 | 当前工作目录上一层的 `../dist/control-ui` |
+
+若所有路径均不存在，Gateway 会在首次访问根路径时返回 500 错误，提示已尝试的路径。
+
+**两种前端启动方式：**
+
+- **方式 A：Gateway 托管** — 先 `make build-frontend` 构建前端，再 `make run` 启动 Gateway，通过 `http://127.0.0.1:18789` 访问。
+- **方式 B：前端开发服务器** — `make run-ui` 启动 Vite 开发服务器（端口 5173），支持热更新，需另行启动 Gateway。
+
+### 3. 开发 / 运行前端（可选）
 
 ```bash
 # 进入前端目录
@@ -113,7 +157,7 @@ pnpm build
 
 前端开发服务器可配置 Gateway WebSocket URL，与本地或远程 Gateway 联调。
 
-### 3. 运行 Agent（需 ANTHROPIC_API_KEY）
+### 4. 运行 Agent（需 ANTHROPIC_API_KEY）
 
 ```bash
 cd src
@@ -121,10 +165,13 @@ export ANTHROPIC_API_KEY=your-key
 go run ./cmd/openclaw agent -m "Hello, echo test"
 ```
 
-## 主要命令（后端）
+## 主要命令
 
 | 命令 | 说明 |
 |------|------|
+| `make run-all` | 一键启动前后端（构建 + Gateway + 前端开发服务器） |
+| `make run` | 构建后端并启动 Gateway（端口 18789） |
+| `make run-ui` | 仅启动前端开发服务器（端口 5173） |
 | `gateway run` | 启动 Gateway HTTP + WebSocket 服务（默认端口 18789） |
 | `agent -m <msg>` | 本地执行 Agent（agentsdk-go + DefaultTools） |
 | `node` | Node 控制（占位） |
@@ -133,6 +180,7 @@ go run ./cmd/openclaw agent -m "Hello, echo test"
 
 | 变量 | 说明 |
 |------|------|
+| `OPENOCTA_FRONTEND_DIR` | 前端构建产物目录（Gateway 托管时查找 `dist/control-ui` 的基准路径，可选） |
 | `OPENCLAW_STATE_DIR` | 状态目录（默认 `~/.openclaw`） |
 | `OPENCLAW_CONFIG_PATH` | 配置文件路径 |
 | `OPENCLAW_SKIP_CHANNELS` | 设为 `1` 跳过 channel 加载 |
@@ -167,9 +215,14 @@ cd ui && pnpm test
 - [src/README.md](src/README.md) — 后端模块、迁移状态与文档链接
 - [ui/README.md](ui/README.md) — Control UI 功能、脚本与结构说明
 
-## 迁移状态
+### 后端内部文档（`src/docs/`）
 
-Go 迁移任务已完成，详见仓库内：
-
-- `docs/refactor/GO-MIGRATION-PLAN.md` — 迁移计划
-- `docs/refactor/GO-MIGRATION-TASKS.md` — 任务派发表
+- [src/docs/configuration.md](src/docs/configuration.md) — OpenClaw/OctopusClaw 配置总览：配置文件位置、各字段含义（agents、channels、gateway、cron、hooks、memory 等）以及常见场景示例。
+- [src/docs/mcp-configuration.md](src/docs/mcp-configuration.md) — MCP（Model Context Protocol）配置与使用说明：如何在配置中声明 MCP 服务器、权限与超时，以及在运行时将 MCP 工具暴露给 Agent。
+- [src/docs/trace-and-observability.md](src/docs/trace-and-observability.md) — 追踪与可观测性：如何启用/配置 Trace、采集 token 使用情况、记录会话与工具调用的链路信息。
+- [src/docs/webhooks.md](src/docs/webhooks.md) — Webhooks 说明：详细描述 `/hooks/wake`、`/hooks/agent`、`/hooks/alert` 的路径、请求/响应结构、错误码含义以及各自适用场景。
+- [src/docs/architecture.md](src/docs/architecture.md) — 架构概览：基于 agentsdk-go 的分层设计（Gateway、Agent Runtime、Skills、Tools、MCP、Sandbox 等），以及 OctopusClaw 在 Webhooks、技能体系上的扩展。
+- [src/docs/skills.md](src/docs/skills.md) — Skills 使用说明：Skill 的加载优先级（extraDirs/bundled/managed/workspace）、在会话中的匹配规则，以及如何编写/部署个人 `SKILL.md`。
+- [src/docs/tools.md](src/docs/tools.md) — 工具系统总览：内置通用工具、OpenClaw 扩展工具以及自定义工具的整体结构与关系，并指向各子文档。
+- [src/docs/tools-builtin.md](src/docs/tools-builtin.md) — agentsdk-go 内置工具说明：bash、文件读写/编辑、grep/glob、webfetch/websearch、任务与异步执行、askuserquestion 等的能力与典型场景。
+- [src/docs/tools-openclaw.md](src/docs/tools-openclaw.md) — OpenClaw 扩展工具说明：`echo`、`cron`、`gateway_config`、`sessions` 等工具如何通过 GatewayInvoker 调用网关能力，并给出自定义工具实现与注册示例。

@@ -87,13 +87,6 @@ src_go/
 | Auto-reply | `pkg/autoreply/` | Dispatcher、ReplyPayload、串行队列 |
 | Memory | `pkg/memory/` | Manager 接口、NoopManager 骨架 |
 
-## 迁移状态
-
-当前迁移任务已完成。详见：
-
-- [GO-MIGRATION-PLAN](../../docs/refactor/GO-MIGRATION-PLAN.md) — 迁移计划
-- [GO-MIGRATION-TASKS](../../docs/refactor/GO-MIGRATION-TASKS.md) — 任务派发表
-
 ## 文档链接
 
 - [docs.openclaw.ai](https://docs.openclaw.ai) — 官方文档

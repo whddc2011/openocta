@@ -7,5 +7,5 @@ var Version = func() string {
 	if v := os.Getenv("OPENCLAW_BUNDLED_VERSION"); v != "" {
 		return v
 	}
-	return "0.0.0-dev"
+	return "0.0.1-dev"
 }()

@@ -4,15 +4,18 @@ package http
 
 import (
 	"context"
-	"github.com/cexll/agentsdk-go/pkg/middleware"
+	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/cexll/agentsdk-go/pkg/middleware"
 	"github.com/cexll/agentsdk-go/pkg/tool"
 	"github.com/openclaw/openclaw/pkg/acp/mcp"
 	"github.com/openclaw/openclaw/pkg/channels"
@@ -37,6 +40,9 @@ type Server struct {
 	hub        *ws.Hub
 	ctx        *handlers.Context
 	mcpManager *mcp.Manager
+	distOnce   sync.Once
+	distDir    string
+	distErr    error
 }
 
 // isTruthyEnv returns true if the env var is set to a truthy value (1, true, yes).
@@ -221,6 +227,7 @@ func (s *Server) Handler() http.Handler {
 		s.mux.ServeHTTP(w, r)
 	})
 
+	// todo： 生产环境建议去掉，仅用于开发环境
 	httpTraceDir := filepath.Join(".", ".claude-trace")
 	writer, err := middleware.NewFileHTTPTraceWriter(httpTraceDir)
 	var handler http.Handler
@@ -237,14 +244,115 @@ func (s *Server) Handler() http.Handler {
 }
 
 func (s *Server) registerRoutes() {
+	// Serve frontend (./dist) at root for local dev / single-binary use.
+	// Most-specific patterns (e.g. /api/, /ws) still win over this catch-all.
+	s.mux.Handle("GET /", http.HandlerFunc(s.handleDist))
 	s.mux.HandleFunc("GET /health", s.handleHealth)
 	s.mux.HandleFunc("GET /api/health", s.handleHealth)
-	s.mux.HandleFunc("/api/", s.handleAPICatchAll)
-	s.mux.HandleFunc("POST /v1/chat/completions", s.handleNotImplemented)
-	s.mux.HandleFunc("POST /v1/responses", s.handleNotImplemented)
+	//s.mux.HandleFunc("/api/", s.handleAPICatchAll)
+	//s.mux.HandleFunc("POST /v1/chat/completions", s.handleNotImplemented)
+	//s.mux.HandleFunc("POST /v1/responses", s.handleNotImplemented)
 	s.mux.HandleFunc("GET /ws", s.handleWSUpgrade)
 	s.mux.HandleFunc("POST /hooks/", s.handleHooks)
 	s.mux.HandleFunc("POST /hooks", s.handleHooks)
+}
+
+// resolveDistDir resolves the frontend dist directory from multiple candidates.
+// Order: 1) OPENOCTA_FRONTEND_DIR env; 2) cwd/dist/control-ui; 3) parent(cwd)/dist/control-ui.
+// Returns the first path that exists and contains index.html; otherwise an error listing all tried paths.
+func resolveDistDir() (string, error) {
+	var candidates []string
+	if env := strings.TrimSpace(os.Getenv("OPENOCTA_FRONTEND_DIR")); env != "" {
+		p := filepath.Clean(env)
+		if !strings.HasSuffix(p, "control-ui") {
+			p = filepath.Join(p, "control-ui")
+		}
+		candidates = append(candidates, p)
+	}
+	cwd, _ := os.Getwd()
+	candidates = append(candidates, filepath.Join(cwd, "dist", "control-ui"))
+	candidates = append(candidates, filepath.Join(filepath.Dir(cwd), "dist", "control-ui"))
+
+	for _, dir := range candidates {
+		indexPath := filepath.Join(dir, "index.html")
+		if _, err := os.Stat(indexPath); err == nil {
+			return filepath.Clean(dir), nil
+		}
+	}
+	return "", fmt.Errorf("前端文件不存在，已尝试路径: %s", strings.Join(candidates, " / "))
+}
+
+// handleDist serves the static frontend from the resolved dist directory.
+// - GET / returns dist/index.html (200, no redirect)
+// - GET /assets/... serves static files
+// - If a path does not exist and the client accepts HTML, fall back to index.html (SPA routing)
+func (s *Server) handleDist(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		http.NotFound(w, r)
+		return
+	}
+	s.distOnce.Do(func() {
+		s.distDir, s.distErr = resolveDistDir()
+	})
+	if s.distErr != nil {
+		http.Error(w, s.distErr.Error(), http.StatusInternalServerError)
+		return
+	}
+	distDir := s.distDir
+	indexPath := filepath.Join(distDir, "index.html")
+
+	// Serve index.html for root or SPA fallback (no FileServer to avoid 301 redirects)
+	serveIndex := func() {
+		f, err := os.Open(indexPath)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		defer f.Close()
+		info, err := f.Stat()
+		if err != nil || info.IsDir() {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		http.ServeContent(w, r, "index.html", info.ModTime(), f)
+	}
+
+	cleanPath := path.Clean("/" + strings.TrimSpace(r.URL.Path))
+	if cleanPath == "/" || cleanPath == "" {
+		serveIndex()
+		return
+	}
+
+	// Static file: resolve under distDir (no .. escape)
+	name := strings.TrimPrefix(cleanPath, "/")
+	name = filepath.Clean(name)
+	if name == "" || strings.HasPrefix(name, "..") {
+		http.NotFound(w, r)
+		return
+	}
+	fullPath := filepath.Join(distDir, name)
+	f, err := os.Open(fullPath)
+	if err != nil {
+		accept := strings.ToLower(r.Header.Get("Accept"))
+		if strings.Contains(accept, "text/html") || strings.Contains(accept, "*/*") {
+			serveIndex()
+			return
+		}
+		http.NotFound(w, r)
+		return
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	if info.IsDir() {
+		http.NotFound(w, r)
+		return
+	}
+	http.ServeContent(w, r, info.Name(), info.ModTime(), f)
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {

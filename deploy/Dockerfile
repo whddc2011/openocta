@@ -25,7 +25,7 @@ COPY src/go.mod src/go.sum ./
 RUN go mod download
 
 COPY src/ ./
-ARG VERSION=0.0.0-dev
+ARG VERSION=0.0.1-dev
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -ldflags "-s -w -X github.com/openclaw/openclaw/pkg/version.Version=${VERSION}" \
     -o /openocta ./cmd/openocta
