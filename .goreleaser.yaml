@@ -8,8 +8,9 @@ project_name: openocta
 
 before:
   hooks:
-    - cd ui && npm install && npm run build
     - cp src/config-schema.json src/openocta.json.example src/.env src/embed/
+    - make ui
+    - ls src/embed/
     - cd src && go mod download
 
 builds:
@@ -29,6 +30,7 @@ builds:
       - -X github.com/openocta/openocta/pkg/version.Version={{.Version}}
 
 archives:
+  # 各平台压缩包：二进制 + src/docs 说明文档
   - id: default
     wrap_in_directory: true
     format_overrides:
@@ -40,6 +42,18 @@ archives:
     format: tar.gz
     files:
       - none*
+      - src: src/docs/**/*
+        dst: docs
+
+  # 独立说明文档压缩包，输出到 dist 目录
+  - id: docs
+    meta: true
+    name_template: "{{ .ProjectName }}-docs_{{ .Version }}"
+    format: tar.gz
+    wrap_in_directory: true
+    files:
+      - src: src/docs/**/*
+        dst: docs
 
 nfpms:
   - id: openocta
