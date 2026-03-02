@@ -11,6 +11,39 @@ import (
 	"github.com/openocta/openocta/pkg/config"
 )
 
+// builtInProvider describes a known provider with default base URL, API type and env key.
+type builtInProvider struct {
+	baseURL      string
+	useAnthropic bool // true = Anthropic messages API, false = OpenAI completions
+	envKey       string
+	defaultModel string
+}
+
+// builtInProviders maps provider id to default settings (used when not in config.models.providers).
+var builtInProviders = map[string]builtInProvider{
+	"openrouter":        {"https://openrouter.ai/api/v1", false, "OPENROUTER_API_KEY", "auto"},
+	"litellm":           {"http://localhost:4000", false, "LITELLM_API_KEY", ""},
+	"moonshot":          {"https://api.moonshot.ai/v1", false, "MOONSHOT_API_KEY", "kimi-k2.5"},
+	"moonshot-cn":       {"https://api.moonshot.cn/v1", false, "MOONSHOT_API_KEY", "kimi-k2.5"},
+	"kimi-coding":       {"https://api.moonshot.ai/anthropic", true, "KIMI_API_KEY", "k2p5"},
+	"opencode":          {"https://opencode.ai/zen/v1", false, "OPENCODE_API_KEY", "claude-opus-4-6"},
+	"zai":               {"https://api.z.ai/api/paas/v4", false, "ZAI_API_KEY", "glm-5"},
+	"xai":               {"https://api.x.ai/v1", false, "XAI_API_KEY", "grok-3-mini"},
+	"together":          {"https://api.together.xyz/v1", false, "TOGETHER_API_KEY", "meta-llama/Llama-3.3-70B-Instruct-Turbo"},
+	"venice":            {"https://api.venice.ai/api/v1", false, "VENICE_API_KEY", "falcon-3.1-70b"},
+	"synthetic":         {"https://api.synthetic.new/anthropic", true, "SYNTHETIC_API_KEY", "hf:MiniMaxAI/MiniMax-M2.1"},
+	"qianfan":           {"https://qianfan.baidubce.com/v2", false, "QIANFAN_API_KEY", "deepseek-v3-2-251201"},
+	"huggingface":       {"https://router.huggingface.co/v1", false, "HUGGINGFACE_HUB_TOKEN", ""},
+	"xiaomi":            {"https://api.xiaomimimo.com/anthropic", true, "XIAOMI_API_KEY", "mimo-v2-flash"},
+	"minimax":           {"https://api.minimax.io/anthropic", true, "MINIMAX_API_KEY", "MiniMax-M2.1"},
+	"mistral":           {"https://api.mistral.ai/v1", false, "MISTRAL_API_KEY", "mistral-large-latest"},
+	"groq":              {"https://api.groq.com/openai/v1", false, "GROQ_API_KEY", "llama-3.3-70b-versatile"},
+	"cerebras":          {"https://api.cerebras.ai/v1", false, "CEREBRAS_API_KEY", "llama-4-scout-17b-16e-instruct"},
+	"ollama":            {"http://127.0.0.1:11434/v1", false, "OLLAMA_API_KEY", "llama3.3"},
+	"vllm":              {"http://127.0.0.1:8000/v1", false, "VLLM_API_KEY", ""},
+	"vercel-ai-gateway": {"https://api.vercel.ai/v1", false, "AI_GATEWAY_API_KEY", ""},
+}
+
 // ResolveSessionAgentID resolves agent ID from sessionKey.
 // sessionKey format: "agent:agentId:sessionId" or "sessionId" (defaults to "main").
 func ResolveSessionAgentID(sessionKey string) string {
@@ -69,6 +102,27 @@ func getEnvVar(cfg *config.OpenOctaConfig, key string) string {
 	return os.Getenv(key)
 }
 
+// resolveProviderAPIKey returns the API key for a provider from config or env.
+// If apiKeyFromConfig is empty, falls back to getEnvVar(cfg, strings.ToUpper(provider)+"_API_KEY").
+// If apiKeyFromConfig starts with "$", it is treated as env var name (e.g. $LITELLM_API_KEY).
+func resolveProviderAPIKey(cfg *config.OpenOctaConfig, provider, apiKeyFromConfig string) string {
+	apiKey := strings.TrimSpace(apiKeyFromConfig)
+	if apiKey != "" {
+		if strings.HasPrefix(apiKey, "$") {
+			envKey := strings.TrimPrefix(apiKey, "$")
+			return getEnvVar(cfg, envKey)
+		}
+		// If it looks like a literal key (sk-, gsk-, xai-, etc.), use as-is
+		if strings.HasPrefix(apiKey, "sk-") || strings.HasPrefix(apiKey, "gsk-") || strings.HasPrefix(apiKey, "xai-") || strings.HasPrefix(apiKey, "bce-") {
+			return apiKey
+		}
+		// Otherwise treat as env var name (e.g. LITELLM_API_KEY)
+		return getEnvVar(cfg, apiKey)
+	}
+	envKey := strings.ToUpper(strings.ReplaceAll(provider, "-", "_")) + "_API_KEY"
+	return getEnvVar(cfg, envKey)
+}
+
 // resolveAgentModelRef returns the primary model reference from agent config or defaults.
 func resolveAgentModelRef(cfg *config.OpenOctaConfig, agentID string) string {
 	agentCfg := resolveAgentConfig(cfg, agentID)
@@ -98,20 +152,9 @@ func CreateModelFactoryFromConfig(cfg *config.OpenOctaConfig, agentID string) (a
 
 	if cfg != nil && cfg.Models != nil && cfg.Models.Providers != nil {
 		if providerCfg, ok := cfg.Models.Providers[provider]; ok {
-			apiKey := providerCfg.APIKey
-			if apiKey != "" {
-				if strings.HasPrefix(apiKey, "$") || (!strings.HasPrefix(apiKey, "sk-") && !strings.HasPrefix(apiKey, "gsk-") && !strings.HasPrefix(apiKey, "xai-")) {
-					envKey := strings.TrimPrefix(apiKey, "$")
-					apiKey = getEnvVar(cfg, envKey)
-					if apiKey == "" {
-						return nil, fmt.Errorf("API key for provider %s not found: config.models.providers.%s.apiKey references '%s', but it's not found in config.env.vars.%s or %s environment variable", provider, provider, envKey, envKey, envKey)
-					}
-				}
-			} else {
-				apiKey = getEnvVar(cfg, strings.ToUpper(provider)+"_API_KEY")
-			}
+			apiKey := resolveProviderAPIKey(cfg, provider, providerCfg.APIKey)
 			if apiKey == "" {
-				return nil, fmt.Errorf("API key for provider %s not found: check config.models.providers.%s.apiKey (can be a key value or env var name like 'LITELLM_KEY'), or set it in config.env.vars", provider, provider)
+				return nil, fmt.Errorf("API key for provider %s not found: check config.models.providers.%s.apiKey (can be a key value or env var name like $LITELLM_API_KEY), or set it in config.env.vars", provider, provider)
 			}
 
 			foundModelID := modelID
@@ -133,12 +176,48 @@ func CreateModelFactoryFromConfig(cfg *config.OpenOctaConfig, agentID string) (a
 				return nil, fmt.Errorf("no model specified for provider %s and no models defined in config.models.providers.%s", provider, provider)
 			}
 
+			useAnthropic := providerCfg.API != nil && (strings.EqualFold(*providerCfg.API, "anthropic-messages") || *providerCfg.API == "anthropic")
+			baseURL := strings.TrimSpace(providerCfg.BaseURL)
+			if useAnthropic {
+				return &model.AnthropicProvider{
+					ModelName: foundModelID,
+					APIKey:    apiKey,
+					BaseURL:   baseURL,
+				}, nil
+			}
 			return &model.OpenAIProvider{
 				ModelName: foundModelID,
 				APIKey:    apiKey,
-				BaseURL:   providerCfg.BaseURL,
+				BaseURL:   baseURL,
 			}, nil
 		}
+	}
+
+	// Built-in providers (when not defined in config.models.providers)
+	if builtIn, ok := builtInProviders[provider]; ok {
+		apiKey := getEnvVar(cfg, builtIn.envKey)
+		if apiKey == "" {
+			return nil, fmt.Errorf("API key for provider %s not found: set %s in config.env.vars or environment", provider, builtIn.envKey)
+		}
+		resolvedModel := modelID
+		if resolvedModel == "" && builtIn.defaultModel != "" {
+			resolvedModel = builtIn.defaultModel
+		}
+		if resolvedModel == "" {
+			return nil, fmt.Errorf("no model specified for provider %s (use model ref like %s/<modelId>)", provider, provider)
+		}
+		if builtIn.useAnthropic {
+			return &model.AnthropicProvider{
+				ModelName: resolvedModel,
+				APIKey:    apiKey,
+				BaseURL:   builtIn.baseURL,
+			}, nil
+		}
+		return &model.OpenAIProvider{
+			ModelName: resolvedModel,
+			APIKey:    apiKey,
+			BaseURL:   builtIn.baseURL,
+		}, nil
 	}
 
 	if provider == "" {
