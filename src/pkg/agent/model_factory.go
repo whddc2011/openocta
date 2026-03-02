@@ -199,24 +199,38 @@ func CreateModelFactoryFromConfig(cfg *config.OpenOctaConfig, agentID string) (a
 		if apiKey == "" {
 			return nil, fmt.Errorf("API key for provider %s not found: set %s in config.env.vars or environment", provider, builtIn.envKey)
 		}
+		// Allow overriding model/baseURL via env vars, with special handling for kimi-coding (KIMI_*).
+		namePrefix := strings.ToUpper(strings.ReplaceAll(provider, "-", "_"))
+		if provider == "kimi-coding" {
+			namePrefix = "KIMI"
+		}
+
 		resolvedModel := modelID
-		if resolvedModel == "" && builtIn.defaultModel != "" {
-			resolvedModel = builtIn.defaultModel
+		if resolvedModel == "" {
+			if envModel := getEnvVar(cfg, namePrefix+"_MODEL"); envModel != "" {
+				resolvedModel = strings.TrimSpace(envModel)
+			} else if builtIn.defaultModel != "" {
+				resolvedModel = builtIn.defaultModel
+			}
 		}
 		if resolvedModel == "" {
 			return nil, fmt.Errorf("no model specified for provider %s (use model ref like %s/<modelId>)", provider, provider)
+		}
+		baseURL := builtIn.baseURL
+		if envBase := getEnvVar(cfg, namePrefix+"_BASE_URL"); envBase != "" {
+			baseURL = strings.TrimSpace(envBase)
 		}
 		if builtIn.useAnthropic {
 			return &model.AnthropicProvider{
 				ModelName: resolvedModel,
 				APIKey:    apiKey,
-				BaseURL:   builtIn.baseURL,
+				BaseURL:   baseURL,
 			}, nil
 		}
 		return &model.OpenAIProvider{
 			ModelName: resolvedModel,
 			APIKey:    apiKey,
-			BaseURL:   builtIn.baseURL,
+			BaseURL:   baseURL,
 		}, nil
 	}
 
