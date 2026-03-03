@@ -62,7 +62,10 @@ func SendHandler(opts HandlerOpts) error {
 				AccountID: accountId,
 				ChatID:    to,
 				Content:   message,
-				Metadata:  map[string]interface{}{},
+				Metadata:  make(map[string]interface{}),
+			}
+			if header, _ := opts.Params["header"].(string); strings.TrimSpace(header) != "" {
+				rtMsg.Metadata["header"] = strings.TrimSpace(header)
 			}
 			if mediaUrl != "" {
 				rtMsg.Media = []channels.RuntimeMedia{

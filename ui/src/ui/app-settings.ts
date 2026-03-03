@@ -251,7 +251,7 @@ export function inferBasePath() {
 }
 
 export function syncThemeWithSettings(host: SettingsHost) {
-  host.theme = host.settings.theme ?? "system";
+  host.theme = host.settings.theme ?? "light";
   applyResolvedTheme(host, resolveTheme(host.theme));
 }
 

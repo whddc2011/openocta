@@ -236,6 +236,9 @@ func NewServer(addr string, version string) *Server {
 		if p.ChatType != "" {
 			chatParams["chatType"] = p.ChatType
 		}
+		if p.MessageID != "" {
+			chatParams["messageId"] = p.MessageID
+		}
 		ok, payload, _ := ctx.InvokeMethod("chat.send", chatParams)
 		if ok {
 			if m, ok := payload.(map[string]interface{}); ok {
@@ -259,19 +262,20 @@ func NewServer(addr string, version string) *Server {
 				// 旧路径仍保留，但 sessionKey 统一为 agent:main:cron:<jobId>
 				handlers.RunIsolatedAgentTurn(ctx, agentID, "agent:main:cron:"+job.ID, message)
 			},
-			RunCronChat: func(job cron.CronJob, sessionKey, message string) {
+			RunCronChat: func(job cron.CronJob, sessionKey, sessionId, message string) {
 				if sessionKey == "" {
 					sessionKey = "agent:main:cron:" + job.ID
+				}
+				if sessionId == "" {
+					sessionId = job.ID
 				}
 				if ctx.InvokeMethod == nil {
 					return
 				}
-				// 使用稳定且合法的 sessionId 作为转录文件名，最终输出会在 chat.send 中写入
-				// ~/.openocta/cron/runs/<sessionId>.jsonl。
-				sessionID := job.ID
+				// sessionId 由 cron 服务传入：手动触发为新建 UUID，定时调度为 job.ID
 				params := map[string]interface{}{
 					"sessionKey":     sessionKey,
-					"sessionId":      sessionID,
+					"sessionId":      sessionId,
 					"message":        message,
 					"idempotencyKey": "cron:" + job.ID,
 				}

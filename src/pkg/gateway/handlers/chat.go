@@ -61,12 +61,14 @@ func nextChatSeq(agentRunSeq map[string]int64, runId string) int64 {
 
 // DeliverContext 用于将 assistant 消息投递到 IM 通道（如飞书）。
 type DeliverContext struct {
-	Channel   string                 // 通道 ID，如 "feishu"、"qq"
-	To        string                 // 接收者 ID（chatId/openId/groupId 等）
-	ChatType  string                 // "dm"|"group"|"channel"，供 QQ 等区分发送 API
-	UserQuery string                 // 用户原始提问，用于格式化 "| 回复 Agent: userQuery"
-	AgentName string                 // 助手名称，如 "Desmond"
-	Metadata  map[string]interface{} // 通道特定元数据（如 session_webhook）
+	Channel       string                 // 通道 ID，如 "feishu"、"qq"
+	To            string                 // 接收者 ID（chatId/openId/groupId 等）
+	ChatType      string                 // "dm"|"group"|"channel"，供 QQ 等区分发送 API
+	RootMessageID string                 // 用户消息 ID，用于飞书回复 API
+	UserQuery     string                 // 用户原始提问，用于格式化 "| 回复 Agent: userQuery"
+	AgentName     string                 // 助手名称，如 "Desmond"
+	Metadata      map[string]interface{} // 通道特定元数据（如 session_webhook）
+	Header        string                 // 卡片 header 标题（如定时任务运行内容）
 }
 
 // broadcastChatFinal broadcasts a final chat message to clients.
@@ -99,15 +101,22 @@ func broadcastChatFinal(ctx *Context, runId string, sessionKey string, message m
 			rt, ok := ctx.ChannelManager.Get(strings.ToLower(deliver.Channel))
 			if ok && rt != nil {
 				outMsg := &channels.RuntimeOutboundMessage{
-					Channel: deliver.Channel,
-					ChatID:  deliver.To,
-					Content: formatted,
+					Channel:   deliver.Channel,
+					ChatID:    deliver.To,
+					Content:   formatted,
+					ReplyToID: deliver.RootMessageID,
 				}
 				if deliver.ChatType != "" {
 					if outMsg.Metadata == nil {
 						outMsg.Metadata = make(map[string]interface{})
 					}
 					outMsg.Metadata["chat_type"] = deliver.ChatType
+				}
+				if deliver.Header != "" {
+					if outMsg.Metadata == nil {
+						outMsg.Metadata = make(map[string]interface{})
+					}
+					outMsg.Metadata["header"] = deliver.Header
 				}
 				if len(deliver.Metadata) > 0 {
 					if outMsg.Metadata == nil {
@@ -770,16 +779,20 @@ func ChatSendHandler(opts HandlerOpts) error {
 		deliverChannel, _ := opts.Params["channel"].(string)
 		deliverTo, _ := opts.Params["to"].(string)
 		deliverChatType, _ := opts.Params["chatType"].(string)
+		deliverMessageID, _ := opts.Params["messageId"].(string)
+		deliverHeader, _ := opts.Params["header"].(string)
 		deliverOriginalMessage := message
 		deliverAgentName := resolveAgentDisplayName(opts.Context, agent.ResolveSessionAgentID(sessionKey))
 		var deliverCtx *DeliverContext
 		if deliverChannel != "" && deliverTo != "" {
 			deliverCtx = &DeliverContext{
-				Channel:   strings.TrimSpace(deliverChannel),
-				To:        strings.TrimSpace(deliverTo),
-				ChatType:  strings.TrimSpace(deliverChatType),
-				UserQuery: deliverOriginalMessage,
-				AgentName: deliverAgentName,
+				Channel:       strings.TrimSpace(deliverChannel),
+				To:            strings.TrimSpace(deliverTo),
+				ChatType:      strings.TrimSpace(deliverChatType),
+				RootMessageID: strings.TrimSpace(deliverMessageID),
+				Header:        strings.TrimSpace(deliverHeader),
+				UserQuery:     deliverOriginalMessage,
+				AgentName:     deliverAgentName,
 			}
 		}
 
@@ -945,6 +958,7 @@ func ChatSendHandler(opts HandlerOpts) error {
 						runAtMs := runStart.UnixMilli()
 						durationMs := time.Since(runStart).Milliseconds()
 						writeCronSessionResult(sessionKey, sessionID, output, "ok", runAtMs, durationMs)
+						DeliverCronResultIfNeeded(ctxForBroadcast, sessionKey, output, "ok")
 					}
 				} else {
 					appendErrorToTranscript(transcriptPath, "模型未返回任何输出", runId, sessionKey, ctxForBroadcast)
@@ -1135,6 +1149,7 @@ func ChatSendHandler(opts HandlerOpts) error {
 				durationMs := time.Since(runStart).Milliseconds()
 				runAtMs := runStart.UnixMilli()
 				writeCronSessionResult(sessionKey, sessionID, lastAssistantContent, "ok", runAtMs, durationMs)
+				DeliverCronResultIfNeeded(ctxForBroadcast, sessionKey, lastAssistantContent, "ok")
 			}
 
 			// Context cancelled or stream closed
@@ -1173,6 +1188,7 @@ func ChatSendHandler(opts HandlerOpts) error {
 					if cronSession {
 						runAtMs := runStart.UnixMilli()
 						writeCronSessionResult(sessionKey, sessionID, output, "ok", runAtMs, durationMs)
+						DeliverCronResultIfNeeded(ctxForBroadcast, sessionKey, output, "ok")
 					}
 				}
 			}

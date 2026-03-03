@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -118,8 +119,10 @@ type JobCreate struct {
 	Schedule      CronSchedule
 	Payload       CronPayload
 	SessionTarget string
+	SessionKey    string // 定时调度时使用的 sessionKey，格式 agent:main:cron:<jobId>
 	WakeMode      string
 	Enabled       bool
+	Delivery      *CronDelivery
 }
 
 // Add adds a new job.
@@ -135,8 +138,10 @@ func (s *Service) Add(input JobCreate) (CronJob, error) {
 		UpdatedAtMs:   now,
 		Schedule:      input.Schedule,
 		SessionTarget: input.SessionTarget,
+		SessionKey:    strings.TrimSpace(input.SessionKey),
 		WakeMode:      input.WakeMode,
 		Payload:       input.Payload,
+		Delivery:      input.Delivery,
 	}
 	if j.SessionTarget == "" {
 		j.SessionTarget = "main"
@@ -150,9 +155,23 @@ func (s *Service) Add(input JobCreate) (CronJob, error) {
 
 // JobPatch is a partial update for a job.
 type JobPatch struct {
-	Enabled  *bool
-	Name     string
-	Schedule *CronSchedule
+	Enabled    *bool
+	Name       string
+	Schedule   *CronSchedule
+	SessionKey *string // 定时调度时使用的 sessionKey，nil 表示不修改
+	Delivery   *CronDelivery
+}
+
+// GetJob returns a copy of the job by ID, or false if not found.
+func (s *Service) GetJob(id string) (CronJob, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for i := range s.store.Jobs {
+		if s.store.Jobs[i].ID == id {
+			return s.store.Jobs[i], true
+		}
+	}
+	return CronJob{}, false
 }
 
 // Update updates a job by ID.
@@ -169,6 +188,12 @@ func (s *Service) Update(id string, patch JobPatch) (CronJob, error) {
 			}
 			if patch.Schedule != nil {
 				s.store.Jobs[i].Schedule = *patch.Schedule
+			}
+			if patch.Delivery != nil {
+				s.store.Jobs[i].Delivery = patch.Delivery
+			}
+			if patch.SessionKey != nil {
+				s.store.Jobs[i].SessionKey = strings.TrimSpace(*patch.SessionKey)
 			}
 			s.store.Jobs[i].UpdatedAtMs = time.Now().UnixMilli()
 			j := s.store.Jobs[i]
@@ -214,7 +239,7 @@ func (s *Service) Run(id string, mode string) error {
 
 	status := "ok"
 	errMsg := ""
-	var sessionKey string
+	var sessionKey, cronSessionID string
 
 	// Validate payload/sessionTarget combinations (mirrors TS semantics).
 	if jobCopy.SessionTarget == "main" {
@@ -227,9 +252,18 @@ func (s *Service) Run(id string, mode string) error {
 			status = "skipped"
 			errMsg = `isolated job requires payload.kind="agentTurn"`
 		} else {
-			// 对于隔离会话，统一使用 agent:main:cron:<jobId> 作为 sessionKey，
-			// 便于网关和 UI 统一识别和管理 cron 会话。
-			sessionKey = "agent:main:cron:" + jobCopy.ID
+			// 手动触发（mode=force）：生成新 sessionKey agent:main:cron:<jobId>:run:<sessionId>
+			// 定时调度（mode=due）：使用 jobs.json 中的 sessionKey，缺省为 agent:main:cron:<jobId>
+			if mode == "force" {
+				cronSessionID = uuid.New().String()
+				sessionKey = "agent:main:cron:" + jobCopy.ID + ":run:" + cronSessionID
+			} else {
+				sessionKey = strings.TrimSpace(jobCopy.SessionKey)
+				if sessionKey == "" {
+					sessionKey = "agent:main:cron:" + jobCopy.ID
+				}
+				cronSessionID = jobCopy.ID
+			}
 		}
 	}
 
@@ -250,7 +284,7 @@ func (s *Service) Run(id string, mode string) error {
 			// produce proper transcripts and session store entries. Fall back
 			// to RunIsolatedAgentJob for backwards compatibility.
 			if deps.RunCronChat != nil {
-				deps.RunCronChat(jobCopy, sessionKey, jobCopy.Payload.Message)
+				deps.RunCronChat(jobCopy, sessionKey, cronSessionID, jobCopy.Payload.Message)
 			} else if deps.RunIsolatedAgentJob != nil {
 				deps.RunIsolatedAgentJob(jobCopy, jobCopy.Payload.Message)
 			}
@@ -360,10 +394,15 @@ func (s *Service) Start() {
 			nextMs := s.NextWakeAtMs()
 			nowMs := time.Now().UnixMilli()
 			sleepMs := int64(maxTimerSleepMs)
-			if nextMs > 0 && nextMs > nowMs {
-				d := nextMs - nowMs
-				if d < sleepMs {
-					sleepMs = d
+			if nextMs > 0 {
+				if nextMs <= nowMs {
+					// 已到或已过执行时间，立即执行（sleep 0）
+					sleepMs = 0
+				} else {
+					d := nextMs - nowMs
+					if d < sleepMs {
+						sleepMs = d
+					}
 				}
 			}
 			select {
@@ -373,10 +412,15 @@ func (s *Service) Start() {
 				return
 			}
 			nowMs = time.Now().UnixMilli()
-			for _, id := range s.dueJobIDs(nowMs) {
+			dueIds := s.dueJobIDs(nowMs)
+			for _, id := range dueIds {
 				_ = s.Run(id, "due")
 			}
-			_ = s.RecomputeNextRuns()
+			// 仅在有任务实际执行时重算下次运行时间，避免覆盖「即将到期」任务的 NextRunAtMs
+			// （例如因时钟偏差未命中 dueJobIDs，RecomputeNextRuns 会错误跳过该次执行）
+			if len(dueIds) > 0 {
+				_ = s.RecomputeNextRuns()
+			}
 		}
 	}()
 }

@@ -93,6 +93,7 @@ type Context struct {
 // HooksAgentParams is the input for HooksAgent callback.
 type HooksAgentParams struct {
 	Message        string
+	MessageID      string // 用户消息 ID，用于飞书等通道的回复 API
 	Name           string
 	WakeMode       string
 	SessionKey     string

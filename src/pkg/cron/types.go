@@ -11,11 +11,11 @@ type CronSchedule struct {
 	Tz       string `json:"tz,omitempty"`
 }
 
-// CronDelivery defines how to deliver job output.
+// CronDelivery defines how to deliver job output (aligns with openclaw CronDelivery).
 type CronDelivery struct {
-	Mode       string `json:"mode"` // "none" | "announce"
-	Channel    string `json:"channel,omitempty"`
-	To         string `json:"to,omitempty"`
+	Mode       string `json:"mode"`              // "none" | "announce" | "webhook"
+	Channel    string `json:"channel,omitempty"` // channel id or "last"
+	To         string `json:"to,omitempty"`      // chat/user id for announce; URL for webhook
 	BestEffort bool   `json:"bestEffort,omitempty"`
 }
 
@@ -39,20 +39,23 @@ type CronJobState struct {
 
 // CronJob is a scheduled job.
 type CronJob struct {
-	ID             string        `json:"id"`
-	AgentID        string        `json:"agentId,omitempty"`
-	Name           string        `json:"name"`
-	Description    string        `json:"description,omitempty"`
-	Enabled        bool          `json:"enabled"`
-	DeleteAfterRun bool          `json:"deleteAfterRun,omitempty"`
-	CreatedAtMs    int64         `json:"createdAtMs"`
-	UpdatedAtMs    int64         `json:"updatedAtMs"`
-	Schedule       CronSchedule  `json:"schedule"`
-	SessionTarget  string        `json:"sessionTarget"`
-	WakeMode       string        `json:"wakeMode"`
-	Payload        CronPayload   `json:"payload"`
-	Delivery       *CronDelivery `json:"delivery,omitempty"`
-	State          CronJobState  `json:"state"`
+	ID             string       `json:"id"`
+	AgentID        string       `json:"agentId,omitempty"`
+	Name           string       `json:"name"`
+	Description    string       `json:"description,omitempty"`
+	Enabled        bool         `json:"enabled"`
+	DeleteAfterRun bool         `json:"deleteAfterRun,omitempty"`
+	CreatedAtMs    int64        `json:"createdAtMs"`
+	UpdatedAtMs    int64        `json:"updatedAtMs"`
+	Schedule       CronSchedule `json:"schedule"`
+	SessionTarget  string       `json:"sessionTarget"`
+	// SessionKey 可选，用于定时调度时复用同一会话。格式：agent:main:cron:<jobId>。
+	// 手动触发时始终生成新 sessionKey（agent:main:cron:<jobId>:run:<sessionId>），忽略此字段。
+	SessionKey string        `json:"sessionKey,omitempty"`
+	WakeMode   string        `json:"wakeMode"`
+	Payload    CronPayload   `json:"payload"`
+	Delivery   *CronDelivery `json:"delivery,omitempty"`
+	State      CronJobState  `json:"state"`
 }
 
 // StoreFile is the persistent store format.

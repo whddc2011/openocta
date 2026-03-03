@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/openocta/openocta/pkg/cron"
 	"github.com/openocta/openocta/pkg/gateway/protocol"
@@ -137,13 +138,20 @@ func CronAddHandler(opts HandlerOpts) error {
 	if v, ok := params["enabled"].(bool); ok {
 		enabled = v
 	}
+	delivery := parseDelivery(params["delivery"])
+	sessionKey := ""
+	if v, ok := params["sessionKey"].(string); ok {
+		sessionKey = strings.TrimSpace(v)
+	}
 	j, err := ctx.CronService.Add(cron.JobCreate{
 		Name:          name,
 		Schedule:      sched,
 		Payload:       payload,
 		SessionTarget: sessionTarget,
+		SessionKey:    sessionKey,
 		WakeMode:      wakeMode,
 		Enabled:       enabled,
+		Delivery:      delivery,
 	})
 	if err != nil {
 		opts.Respond(false, nil, &protocol.ErrorShape{
@@ -255,6 +263,13 @@ func CronUpdateHandler(opts HandlerOpts) error {
 				return nil
 			}
 			patch.Schedule = &s
+		}
+		if d := parseDelivery(p["delivery"]); d != nil {
+			patch.Delivery = d
+		}
+		if v, ok := p["sessionKey"].(string); ok {
+			sk := strings.TrimSpace(v)
+			patch.SessionKey = &sk
 		}
 	}
 	j, err := svc.Update(jobID, patch)
@@ -480,4 +495,48 @@ func parsePayload(v interface{}) cron.CronPayload {
 		p.Message = msg
 	}
 	return p
+}
+
+// parseDelivery parses optional delivery config from params (cron.add / cron.update). Aligns with openclaw CronDelivery.
+func parseDelivery(v interface{}) *cron.CronDelivery {
+	if v == nil {
+		return nil
+	}
+	m, ok := v.(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	mode, _ := m["mode"].(string)
+	mode = strings.TrimSpace(strings.ToLower(mode))
+	if mode != "announce" && mode != "webhook" && mode != "none" {
+		// legacy "deliver" -> announce
+		if mode == "deliver" {
+			mode = "announce"
+		} else {
+			mode = ""
+		}
+	}
+	channel, _ := m["channel"].(string)
+	channel = strings.TrimSpace(strings.ToLower(channel))
+	if channel == "" && (mode == "announce" || mode == "") {
+		channel = "last"
+	}
+	to, _ := m["to"].(string)
+	to = strings.TrimSpace(to)
+	bestEffort := false
+	if b, ok := m["bestEffort"].(bool); ok {
+		bestEffort = b
+	}
+	if mode == "" && channel == "last" && to == "" && !bestEffort {
+		return nil
+	}
+	if mode == "" {
+		mode = "announce"
+	}
+	return &cron.CronDelivery{
+		Mode:       mode,
+		Channel:    channel,
+		To:         to,
+		BestEffort: bestEffort,
+	}
 }

@@ -37,6 +37,7 @@ func (s *hooksAgentSink) Deliver(_ context.Context, msg *channels.InboundMessage
 
 	params := handlers.HooksAgentParams{
 		Message:    text,
+		MessageID:  msg.ID,
 		Name:       channelID,
 		WakeMode:   "now",
 		SessionKey: sessionKey,

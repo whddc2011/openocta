@@ -8,7 +8,7 @@ export function getTabGroups() {
       label: t("tabGroupControl"),
       tabs: ["overview", "channels", "instances", "sessions", "usage", "cron"] as const,
     },
-    { label: t("tabGroupAgent"), tabs: ["agents", "skills", "nodes"] as const },
+    { label: t("tabGroupAgent"), tabs: ["skills"] as const },
     { label: t("tabGroupSettings"), tabs: ["config", "debug", "logs"] as const },
   ];
 }

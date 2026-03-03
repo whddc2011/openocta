@@ -165,23 +165,26 @@ func (r *Runtime) Send(msg *channels.RuntimeOutboundMessage) error {
 		receiveIDType = larkim.ReceiveIdTypeOpenId
 	}
 
+	header := msg.MetadataString("header")
+	rootMessageID := msg.ReplyToID
+
 	var err error
 
 	// 优先发送图片媒体
 	if len(msg.Media) > 0 {
 		for _, m := range msg.Media {
 			if m.Type == "image" {
-				if err = r.sendImageMessage(chatID, m, receiveIDType); err != nil {
+				if err = r.sendImageMessage(chatID, m, receiveIDType, rootMessageID); err != nil {
 					fmt.Println(runtimeLoggerKey, "failed to send image message:", err)
 				}
 			}
 		}
 	}
 
-	// 文本内容通过交互式卡片发送
+	// 文本内容通过交互式卡片发送（plain_text 避免 markdown table 限制）
 	content := strings.TrimSpace(msg.Content)
 	if content != "" {
-		if err = r.sendCardMessage(chatID, content, receiveIDType); err != nil {
+		if err = r.sendCardMessage(chatID, content, receiveIDType, header, rootMessageID); err != nil {
 			fmt.Println(runtimeLoggerKey, "failed to send card message:", err)
 		}
 	}
@@ -457,22 +460,54 @@ func (r *Runtime) addReactionToMessage(messageID, emojiType string) error {
 	return nil
 }
 
-// sendCardMessage 发送 Markdown 卡片消息。
-func (r *Runtime) sendCardMessage(chatID, content, receiveIDType string) error {
-	cardContent := fmt.Sprintf(`{
-		"schema": "2.0",
-		"config": {
-			"wide_screen_mode": true
-		},
-		"body": {
-			"elements": [
-				{
-					"tag": "markdown",
-					"content": %s
-				}
-			]
+// truncateForHeader 截断字符串作为 header，过长时用 "......" 代替。
+func truncateForHeader(s string, maxLen int) string {
+	s = strings.TrimSpace(s)
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen] + "......"
+}
+
+// sendCardMessage 发送卡片消息。使用 plain_text 避免 markdown table 限制；可选 header。
+func (r *Runtime) sendCardMessage(chatID, content, receiveIDType, header, rootMessageID string) error {
+	// 使用 plain_text 组件，content 可能为 markdown 格式但会按纯文本展示
+	plainContent := jsonEscape(content)
+	var cardContent string
+	if header != "" {
+		headerTitle := jsonEscape(truncateForHeader(header, 50))
+		cardContent = fmt.Sprintf(`{
+			"schema": "2.0",
+			"config": {"wide_screen_mode": true},
+			"header": {"title": {"tag":"plain_text","content":%s,"lines":1}},
+			"body": {"elements": [{"tag":"div","text":{"tag":"plain_text","content":%s}}]}
+		}`, headerTitle, plainContent)
+	} else {
+		cardContent = fmt.Sprintf(`{
+			"schema": "2.0",
+			"config": {"wide_screen_mode": true},
+			"body": {"elements": [{"tag":"div","text":{"tag":"plain_text","content":%s}}]}
+		}`, plainContent)
+	}
+
+	if rootMessageID != "" {
+		// 使用回复 API，将消息回复到用户消息下
+		req := larkim.NewReplyMessageReqBuilder().
+			MessageId(rootMessageID).
+			Body(larkim.NewReplyMessageReqBodyBuilder().
+				Content(cardContent).
+				MsgType(larkim.MsgTypeInteractive).
+				Build()).
+			Build()
+		resp, err := r.httpClient.Im.Message.Reply(context.Background(), req)
+		if err != nil {
+			return err
 		}
-	}`, jsonEscape(content))
+		if !resp.Success() {
+			return fmt.Errorf("feishu reply api error: %d %s", resp.Code, resp.Msg)
+		}
+		return nil
+	}
 
 	req := larkim.NewCreateMessageReqBuilder().
 		ReceiveIdType(receiveIDType).
@@ -493,8 +528,8 @@ func (r *Runtime) sendCardMessage(chatID, content, receiveIDType string) error {
 	return nil
 }
 
-// sendImageMessage 上传并发送图片消息。
-func (r *Runtime) sendImageMessage(chatID string, media channels.RuntimeMedia, receiveIDType string) error {
+// sendImageMessage 上传并发送图片消息。rootMessageID 非空时使用回复 API。
+func (r *Runtime) sendImageMessage(chatID string, media channels.RuntimeMedia, receiveIDType, rootMessageID string) error {
 	var imageReader io.Reader
 
 	if media.URL != "" {
@@ -539,6 +574,24 @@ func (r *Runtime) sendImageMessage(chatID string, media channels.RuntimeMedia, r
 	}
 
 	content := fmt.Sprintf(`{"image_key":"%s"}`, imageKey)
+
+	if rootMessageID != "" {
+		req := larkim.NewReplyMessageReqBuilder().
+			MessageId(rootMessageID).
+			Body(larkim.NewReplyMessageReqBodyBuilder().
+				Content(content).
+				MsgType(larkim.MsgTypeImage).
+				Build()).
+			Build()
+		resp, err := r.httpClient.Im.Message.Reply(context.Background(), req)
+		if err != nil {
+			return err
+		}
+		if !resp.Success() {
+			return fmt.Errorf("feishu reply api error: %d %s", resp.Code, resp.Msg)
+		}
+		return nil
+	}
 
 	imageMsgReq := larkim.NewCreateMessageReqBuilder().
 		ReceiveIdType(receiveIDType).
