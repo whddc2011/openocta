@@ -3,7 +3,8 @@
 </p>
 
 <p align="center">
-  <b>OpenOcta 八爪鱼</b> —— 基于 Go 的企业级可观测 & 运维智能代理
+  <b>OpenOcta 八爪鱼</b> —— 中国版 OpenClaw，为每一位运维工程师配备一批7*24小时工作的数字员工，一键
+部署、开箱即用，解放生产力
 </p>
 
 > English version: see `README.en.md`.  
