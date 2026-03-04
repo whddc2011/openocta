@@ -818,10 +818,13 @@ func ChatSendHandler(opts HandlerOpts) error {
 				}
 			}()
 
-			// Build prompt with thinking injection if provided
+			// Build prompt with thinking injection if provided.
+			// NOTE: Do NOT use "/think" prefix - agentsdk-go parses lines starting with "/"
+			// as slash commands. If "think" is not registered in .claude/commands/, it
+			// returns "commands: unknown command". Use a non-command format instead.
 			prompt := message
 			if thinking != "" && !strings.HasPrefix(message, "/") {
-				prompt = "/think " + thinking + " " + message
+				prompt = "[思考级别: " + thinking + "]\n\n" + message
 			}
 
 			// Create runtime with model factory from config
