@@ -120,13 +120,15 @@ func resolveProviderAPIKey(cfg *config.OpenOctaConfig, provider, apiKeyFromConfi
 		if strings.HasPrefix(apiKey, "$") {
 			envKey := strings.TrimPrefix(apiKey, "$")
 			return getEnvVar(cfg, envKey, modelRef)
-		}
-		// If it looks like a literal key (sk-, gsk-, xai-, etc.), use as-is
-		if strings.HasPrefix(apiKey, "sk-") || strings.HasPrefix(apiKey, "gsk-") || strings.HasPrefix(apiKey, "xai-") || strings.HasPrefix(apiKey, "bce-") {
+		} else {
 			return apiKey
 		}
+		// If it looks like a literal key (sk-, gsk-, xai-, bce-, magik-, etc.), use as-is
+		//if strings.HasPrefix(apiKey, "sk-") || strings.HasPrefix(apiKey, "gsk-") || strings.HasPrefix(apiKey, "xai-") || strings.HasPrefix(apiKey, "bce-") || strings.HasPrefix(apiKey, "magik-") {
+		//	return apiKey
+		//}
 		// Otherwise treat as env var name (e.g. LITELLM_API_KEY)
-		return getEnvVar(cfg, apiKey, modelRef)
+		//return getEnvVar(cfg, apiKey, modelRef)
 	}
 	envKey := strings.ToUpper(strings.ReplaceAll(provider, "-", "_")) + "_API_KEY"
 	return getEnvVar(cfg, envKey, modelRef)
