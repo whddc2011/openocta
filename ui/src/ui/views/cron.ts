@@ -2,7 +2,6 @@ import { html, nothing } from "lit";
 import type { ChannelUiMetaEntry, CronJob, CronRunLogEntry, CronStatus } from "../types.ts";
 import type { CronFormState } from "../ui-types.ts";
 import { formatAgo, formatMs } from "../format.ts";
-import { formatMs } from "../format.ts";
 import { pathForTab } from "../navigation.ts";
 import {
   formatCronPayload,
@@ -195,7 +194,7 @@ export function renderCron(props: CronProps) {
           </label>
         </div>
         <label class="field" style="margin-top: 12px;">
-          <span>${props.form.payloadKind === "systemEvent" ? t("cronSystemText") : t("cronAgentMessage")}</span>
+          <span>${props.form.payloadKind === "systemEvent" ? t("cronSystemText") : t("cronAgentMessage")}${props.form.payloadKind === "agentTurn" ? html`<span style="color: var(--danger-color);"> *</span>` : nothing}</span>
           <textarea
             .value=${props.form.payloadText}
             @input=${(e: Event) =>
@@ -203,6 +202,7 @@ export function renderCron(props: CronProps) {
                 payloadText: (e.target as HTMLTextAreaElement).value,
               })}
             rows="4"
+            ?required=${props.form.payloadKind === "agentTurn"}
           ></textarea>
         </label>
         ${
@@ -272,7 +272,12 @@ export function renderCron(props: CronProps) {
             : nothing
         }
         <div class="row" style="margin-top: 14px;">
-          <button class="btn primary" ?disabled=${props.busy} @click=${props.onAdd}>
+          <button
+            class="btn primary"
+            ?disabled=${props.busy ||
+              (props.form.payloadKind === "agentTurn" && !props.form.payloadText.trim())}
+            @click=${props.onAdd}
+          >
             ${props.busy ? t("commonSaving") : t("cronAddJob")}
           </button>
         </div>

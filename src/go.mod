@@ -3,7 +3,7 @@ module github.com/openocta/openocta
 go 1.24.0
 
 require (
-	github.com/cexll/agentsdk-go v0.9.2
+	github.com/cexll/agentsdk-go v0.9.5
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/larksuite/oapi-sdk-go/v3 v3.5.3

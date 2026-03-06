@@ -69,15 +69,23 @@ func (EchoTool) Execute(ctx context.Context, params map[string]interface{}) (*to
 	return &tool.ToolResult{Success: true, Output: text}, nil
 }
 
-// DefaultTools returns the default tool set (Echo only). Use DefaultToolsWithInvoker when gateway context is available.
+// DefaultTools returns the default tool set (Echo, OsInfo, WindowsCmd). Use DefaultToolsWithInvoker when gateway context is available.
 func DefaultTools() []tool.Tool {
-	return []tool.Tool{EchoTool{}}
+	return []tool.Tool{
+		EchoTool{},
+		OsInfoTool{},
+		WindowsCmdTool{},
+	}
 }
 
 // DefaultToolsWithInvoker returns built-in tools that can call the gateway (cron, config, sessions, etc.).
-// Pass nil invoker to get only EchoTool.
+// Pass nil invoker to get only EchoTool, OsInfoTool, WindowsCmdTool.
 func DefaultToolsWithInvoker(invoker GatewayInvoker) []tool.Tool {
-	list := []tool.Tool{EchoTool{}}
+	list := []tool.Tool{
+		EchoTool{},
+		OsInfoTool{},
+		WindowsCmdTool{},
+	}
 	if invoker != nil {
 		list = append(list,
 			CronTool{Invoker: invoker},
