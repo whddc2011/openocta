@@ -171,27 +171,28 @@ func EmployeesDeleteHandler(opts HandlerOpts) error {
 
 // deriveEmployeeIDFromName 从名称推导一个稳定的 ID（小写、[a-z0-9_-]、长度 <=64）。
 func deriveEmployeeIDFromName(name string) string {
-	s := strings.TrimSpace(strings.ToLower(name))
-	if s == "" {
-		return "employee"
-	}
-	var b strings.Builder
-	for _, r := range s {
-		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
-			b.WriteRune(r)
-			continue
-		}
-		if r == '-' || r == '_' || r == ' ' {
-			// 统一折叠为空格为连字符
-			b.WriteRune('-')
-		}
-	}
-	id := strings.Trim(b.String(), "-")
-	if id == "" {
-		id = "employee"
-	}
-	if len(id) > 64 {
-		id = id[:64]
-	}
-	return id
+	return name
+	//s := strings.TrimSpace(strings.ToLower(name))
+	//if s == "" {
+	//	return "employee"
+	//}
+	//var b strings.Builder
+	//for _, r := range s {
+	//	if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+	//		b.WriteRune(r)
+	//		continue
+	//	}
+	//	if r == '-' || r == '_' || r == ' ' {
+	//		// 统一折叠为空格为连字符
+	//		b.WriteRune('-')
+	//	}
+	//}
+	//id := strings.Trim(b.String(), "-")
+	//if id == "" {
+	//	id = "employee"
+	//}
+	//if len(id) > 64 {
+	//	id = id[:64]
+	//}
+	//return id
 }
