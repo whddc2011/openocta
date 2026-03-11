@@ -137,11 +137,6 @@ func New(ctx context.Context, opts Options) (*Runtime, error) {
 			Enabled:                  &enableSandbox,
 			AutoAllowBashIfSandboxed: &enableSandbox, // enableSandbox 为true之后，默认允许命令在沙箱内运行且符合沙箱规则，直接执行，无需用户确认
 		}
-	} else {
-		apiOpts.SettingsOverrides.Sandbox = &agentsdkConfg.SandboxConfig{
-			Enabled:                  &enableSandbox,
-			AutoAllowBashIfSandboxed: &enableSandbox, // enableSandbox 为true之后，默认允许命令在沙箱内运行且符合沙箱规则，直接执行，无需用户确认
-		}
 	}
 
 	// Approval Queue: when enabled, set Permissions.ask for Bash and wire SDK ApprovalQueue store.
