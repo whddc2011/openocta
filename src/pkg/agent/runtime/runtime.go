@@ -5,12 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/tencent-connect/botgo/log"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
-
-	"github.com/tencent-connect/botgo/log"
 
 	sdkagent "github.com/cexll/agentsdk-go/pkg/agent"
 	"github.com/cexll/agentsdk-go/pkg/middleware"
@@ -162,7 +161,11 @@ func New(ctx context.Context, opts Options) (*Runtime, error) {
 				// Block tool execution and wait for approval based on configuration.
 				// If BlockOnApproval is true (default), block and wait; if false, return error immediately.
 				apiOpts.ApprovalWait = approvalQueueCfg.BlockOnApproval == nil || *approvalQueueCfg.BlockOnApproval
-				apiOpts.ApprovalWhitelistTTL = time.Duration(*approvalQueueCfg.TimeoutSeconds) * time.Second
+				if approvalQueueCfg.TimeoutSeconds != nil {
+					apiOpts.ApprovalWhitelistTTL = time.Duration(*approvalQueueCfg.TimeoutSeconds) * time.Second
+				} else {
+					apiOpts.ApprovalWhitelistTTL = time.Minute * 5
+				}
 				// 可选：配置 PermissionRequestHandler 用于自定义审批处理
 				apiOpts.PermissionRequestHandler = func(ctx context.Context, req api.PermissionRequest) (events.PermissionDecisionType, error) {
 					// 自定义处理逻辑

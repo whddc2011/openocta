@@ -1982,7 +1982,7 @@ const ZH: Strings = {
   securitySectionApprovalQueueDesc: "对敏感工具调用进行人工审批，支持按会话 TTL 免审白名单。",
   securityApprovalQueueEnabled: "启用审批队列",
   securityApprovalTimeoutSeconds: "许可过期时间（秒）",
-  securityApprovalTimeoutSecondsHint: "待审批请求超过该时长视为过期（尽力实现：用于网关与 UI 展示/拦截）。",
+  securityApprovalTimeoutSecondsHint: "待审批请求超过该时长视为过期。",
   securityApprovalAllow: "自动允许命令",
   securityApprovalAllowHint: "无需审批直接执行的命令（每行一个）。支持 glob 模式，如 'ls'、'pwd'、'echo *'。",
   securityApprovalAsk: "需要审批的命令",

@@ -51,6 +51,16 @@ export async function saveSandboxConfig(state: ConfigState, sandbox: SandboxConf
   state.configSaving = true;
   (state as { lastError?: string | null }).lastError = null;
   try {
+    const approvalQueue = sandbox.approvalQueue
+      ? {
+          ...sandbox.approvalQueue,
+          timeoutSeconds:
+            sandbox.approvalQueue.timeoutSeconds == null
+              ? 300
+              : sandbox.approvalQueue.timeoutSeconds,
+        }
+      : undefined;
+
     const security = {
       sandbox: {
         enabled: sandbox.enabled,
@@ -61,7 +71,7 @@ export async function saveSandboxConfig(state: ConfigState, sandbox: SandboxConf
         approvalStore: sandbox.approvalStore,
       },
       validator: sandbox.validator,
-      approvalQueue: sandbox.approvalQueue,
+      approvalQueue,
     };
     await saveConfigPatch(state, { security });
     await loadConfig(state);

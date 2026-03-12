@@ -176,8 +176,13 @@ func ApprovalsApproveHandler(opts HandlerOpts) error {
 		return nil
 	}
 	// Approve without adding to whitelist (ttl=0)
-
-	ttl := time.Duration(int64(*opts.Context.Config.Security.ApprovalQueue.TimeoutSeconds)) * time.Second
+	// 判断是否为空
+	var ttl time.Duration
+	if opts.Context.Config.Security != nil && opts.Context.Config.Security.ApprovalQueue != nil && opts.Context.Config.Security.ApprovalQueue.TimeoutSeconds != nil {
+		ttl = time.Duration(int64(*opts.Context.Config.Security.ApprovalQueue.TimeoutSeconds)) * time.Second
+	} else {
+		ttl = time.Minute * 5
+	}
 	if _, err := q.Approve(requestID, strings.TrimSpace(approverID), ttl); err != nil {
 		opts.Respond(false, nil, &protocol.ErrorShape{
 			Code:    protocol.ErrCodeNotFound,
@@ -304,7 +309,13 @@ func ApprovalsWhitelistSessionHandler(opts HandlerOpts) error {
 	}
 
 	// Whitelist the session indefinitely (ttl=0 means no expiry).
-	ttl := time.Duration(int64(*opts.Context.Config.Security.ApprovalQueue.TimeoutSeconds)) * time.Second
+	var ttl time.Duration
+	if opts.Context.Config.Security != nil && opts.Context.Config.Security.ApprovalQueue != nil && opts.Context.Config.Security.ApprovalQueue.TimeoutSeconds != nil {
+		ttl = time.Duration(int64(*opts.Context.Config.Security.ApprovalQueue.TimeoutSeconds)) * time.Second
+	} else {
+		ttl = time.Minute * 5
+	}
+
 	if err := q.AddSessionToWhitelist(rec.SessionID, ttl); err != nil {
 		opts.Respond(false, nil, &protocol.ErrorShape{
 			Code:    protocol.ErrCodeInternal,
