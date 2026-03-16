@@ -152,4 +152,4 @@ OpenOcta/
 - 不能替换和修改 OpenOcta 的 Logo 和版权信息；
 - 二次开发后的衍生作品必须遵守 GPLv3 的开源义务。
 
-如需商业授权，请联系：**chengyun@databuff.com**。
+如需商业授权，请联系：**zhanghp@databuff.com**。
