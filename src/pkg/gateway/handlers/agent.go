@@ -30,7 +30,7 @@ func AgentHandler(opts HandlerOpts) error {
 	}
 
 	runId := uuid.New().String()
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 600*time.Second)
 	defer cancel()
 
 	// Create runtime with model factory from config
@@ -124,7 +124,7 @@ func RunIsolatedAgentTurn(ctx *Context, agentID string, sessionKey string, messa
 	if ctx == nil {
 		return
 	}
-	runCtx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	runCtx, cancel := context.WithTimeout(context.Background(), 600*time.Second)
 	defer cancel()
 	var modelFactory api.ModelFactory
 	if ctx.Config != nil {
@@ -188,7 +188,7 @@ func RunCronAgentOnce(ctx *Context, agentID string, sessionKey string, message s
 	if ctx == nil {
 		return "", fmt.Errorf("nil gateway context")
 	}
-	runCtx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	runCtx, cancel := context.WithTimeout(context.Background(), 600*time.Second)
 	defer cancel()
 
 	var modelFactory api.ModelFactory
