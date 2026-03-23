@@ -3,7 +3,7 @@ const KEY = "openclaw.control.settings.v1";
 /** Default gateway token when user does not fill in. Must match backend DefaultGatewayToken. */
 export const DEFAULT_GATEWAY_TOKEN = "edc146993b5ae0b1544c3137cc888f94436cf11e1952cff6";
 
-import { defaultGatewayHost, parseGatewayHost } from "./gateway-url.ts";
+import { parseGatewayHost } from "./gateway-url.ts";
 import type { ThemeMode } from "./theme.ts";
 
 export type UiSettings = {
@@ -20,7 +20,16 @@ export type UiSettings = {
 };
 
 export function loadSettings(): UiSettings {
-  const defaultHost = defaultGatewayHost();
+  const defaultHost = (() => {
+    // When running the Control UI via Vite (default port 5173),
+    // default to the local gateway server (127.0.0.1:18900).
+    // In production (served by the gateway), use same-origin (host:port).
+    const isViteDev = typeof location !== "undefined" && location.port === "5173";
+    if (isViteDev) {
+      return "127.0.0.1:18900";
+    }
+    return typeof location !== "undefined" ? location.host : "127.0.0.1:18900";
+  })();
 
   const defaults: UiSettings = {
     gatewayUrl: defaultHost,
