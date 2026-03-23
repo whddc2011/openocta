@@ -190,8 +190,7 @@ github.com/yosida95/uritemplate/v3 v3.0.2/go.mod h1:ILOh0sOhIJR3+L/8afwt/kE++YT0
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
-github.com/zhanbei1/wecom-aibot-go-sdk v0.0.0-20260323044705-dfff1329d7e6 h1:I+Y8Pk2k4Ztx1BOhQy6XkfhB6prBW8E1igk3OhoE3gY=
-github.com/zhanbei1/wecom-aibot-go-sdk v0.0.0-20260323044705-dfff1329d7e6/go.mod h1:Ll6l0a8eyas5cbYRAyKBlai79z+WpBSWCS+/+IL5nDc=
+github.com/zhanbei1/wecom-aibot-go-sdk v0.0.1 h1:MzYt3YvQ3ouKeU3YWX4gzVnIM5P/I7hFcqLriNWBWCo=
 github.com/zhanbei1/wecom-aibot-go-sdk v0.0.1/go.mod h1:Ll6l0a8eyas5cbYRAyKBlai79z+WpBSWCS+/+IL5nDc=
 go.opentelemetry.io/auto/sdk v1.2.1 h1:jXsnJ4Lmnqd11kwkBV2LgLoFMZKizbCi5fNZ/ipaZ64=
 go.opentelemetry.io/auto/sdk v1.2.1/go.mod h1:KRTj+aOaElaLi+wW1kO/DZRXwkF4C5xPbEe3ZiIhN7Y=
