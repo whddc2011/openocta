@@ -5,7 +5,7 @@
 .shell {
   --shell-pad: 16px;
   --shell-gap: 16px;
-  --shell-nav-width: 220px;
+  --shell-nav-width: 200px;
   --shell-topbar-height: 50px;
   --shell-focus-duration: 200ms;
   --shell-focus-ease: var(--ease-out);
@@ -42,6 +42,10 @@
 
 .shell--nav-collapsed {
   grid-template-columns: 0px minmax(0, 1fr);
+}
+
+.shell--chat.shell--nav-collapsed {
+  grid-template-columns: 56px minmax(0, 1fr);
 }
 
 .shell--chat-focus {
@@ -87,31 +91,24 @@
    =========================================== */
 
 .session-sidebar {
-  padding: 12px;
+  padding-top: 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  height: 100%;
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
 }
 
 .session-new {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  height: 40px;
-  border-radius: 10px;
-  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
-  background: color-mix(in srgb, var(--accent) 10%, var(--bg));
-  color: var(--accent);
-  font-weight: 700;
+  margin: 0 16px;
 }
 
-.session-new:hover {
-  background: color-mix(in srgb, var(--accent) 14%, var(--bg));
+.session-new__icon {
+  display: block;
 }
 
 .session-new__icon svg {
+  display: block;
   width: 18px;
   height: 18px;
 }
@@ -119,43 +116,87 @@
 .session-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
   overflow: auto;
-  padding-right: 4px;
+}
+
+.nav--massage__footer {
+  height: 48px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.session-sidebar__toggle {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.session-sidebar__toggle:hover {
+  color: var(--text-primary);
+}
+
+.session-sidebar__toggle-icon {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--duration-fast) ease, transform var(--duration-fast) ease;
+}
+
+.session-sidebar__toggle-icon svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.5px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.session-sidebar__toggle-icon--collapse {
+  transform: rotate(90deg);
+}
+
+.session-sidebar__toggle-icon--expand {
+  transform: rotate(-90deg);
 }
 
 .session-item {
+  flex: none;
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: 36px;
-  padding: 6px 10px;
-  border-radius: 10px;
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--text-regular);
+  gap: 12px;
+  height: 64px;
+  padding: 12px 16px;
+  color: var(--text-primary);
   text-align: left;
   cursor: pointer;
 }
 
-.session-item:hover {
-  background: var(--bg2);
-}
-
+.session-item:hover,
 .session-item--active {
-  background: var(--bg2);
-  border-color: var(--border);
+  background: var(--bg-content);
 }
 
 .session-item__icon {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in srgb, var(--accent) 15%, var(--bg));
+  background: var(--accent-subtle);
   color: var(--accent);
 }
 
@@ -181,14 +222,18 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 14px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 16px;
 }
 
 .session-item__sub {
-  font-size: 12px;
+  margin-top: 4px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 12px;
+  line-height: 14px;
 }
 
 .session-item__input {
@@ -287,7 +332,7 @@
   grid-area: nav;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 16px 12px;
+  padding: 16px;
   background: var(--bg);
   scrollbar-width: none; /* Firefox */
   transition:
@@ -295,6 +340,37 @@
     padding var(--shell-focus-duration) var(--shell-focus-ease),
     opacity var(--shell-focus-duration) var(--shell-focus-ease);
   min-height: 0;
+}
+
+.nav--massage {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.nav--massage.nav--collapsed {
+  width: 56px;
+  min-width: 56px;
+}
+
+.nav--massage.nav--collapsed .session-new {
+  margin: 0 12px;
+  padding: 0;
+  gap: 0;
+}
+
+.nav--massage.nav--collapsed .session-new > span:not(.session-new__icon) {
+  display: none;
+}
+
+.nav--massage.nav--collapsed .session-item {
+  padding: 16px 12px;
+  gap: 0;
+}
+
+.nav--massage.nav--collapsed .session-item__body {
+  display: none;
 }
 
 /* Beta badge for nav items */
@@ -330,16 +406,6 @@
   overflow: hidden;
   pointer-events: none;
   opacity: 0;
-}
-
-.nav--collapsed {
-  width: 0;
-  min-width: 0;
-  padding: 0;
-  overflow: hidden;
-  border: none;
-  opacity: 0;
-  pointer-events: none;
 }
 
 /* Nav collapse toggle */
@@ -1418,9 +1484,8 @@ button.nav-item {
    Desktop Catalog Refresh
    =========================================== */
 
-.shell--catalog {
-  --shell-nav-width: 200px;
-  background: var(--bg-content);
+.shell--chat {
+  --shell-nav-width: 240px;
 }
 
 .shell--tutorials {

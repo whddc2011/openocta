@@ -219,13 +219,15 @@
    =========================================== */
 
 .btn {
+  flex: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  height: 32px;
+  gap: 4px;
   border: none;
   background: #fff;
-  padding: 8px 16px;
+  padding: 2px 16px;
   border-radius: 4px;
   font-size: 13px;
   line-height: 14px;

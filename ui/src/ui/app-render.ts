@@ -225,6 +225,8 @@ export function renderApp(state: AppViewState) {
   const basePath = normalizeBasePath(state.basePath ?? "");
   const isScheduledTasks =
     state.tab === "scheduledTasks" || state.tab === "cronHistory" || state.tab === "cron";
+  const isMessagePage = state.tab === "message";
+  const isMessageNavCollapsed = isMessagePage && state.settings.navCollapsed;
   const isCatalogArea =
     state.tab === "employeeMarket" ||
     state.tab === "skillLibrary" ||
@@ -244,7 +246,7 @@ export function renderApp(state: AppViewState) {
     state.tab === "llmTrace" ||
     state.tab === "aboutUs";
   return html`
-    <div class="shell ${isChat ? "shell--chat" : ""} ${isCatalogArea ? "shell--catalog" : ""} ${state.tab === "tutorials" ? "shell--tutorials" : ""} ${chatFocus ? "shell--chat-focus" : ""} ${state.settings.navCollapsed ? "shell--nav-collapsed" : ""} ${state.onboarding ? "shell--onboarding" : ""}">
+    <div class="shell ${isChat ? "shell--chat" : ""} ${isCatalogArea ? "shell--catalog" : ""} ${state.tab === "tutorials" ? "shell--tutorials" : ""} ${chatFocus ? "shell--chat-focus" : ""} ${isMessageNavCollapsed ? "shell--nav-collapsed" : ""} ${state.onboarding ? "shell--onboarding" : ""}">
       <header class="topbar">
         <div class="topbar-left">
           <div class="brand">
@@ -355,13 +357,13 @@ export function renderApp(state: AppViewState) {
       </header>
       ${state.tab === "tutorials"
         ? nothing
-        : html`<aside class="nav ${isCatalogArea ? "nav--catalog" : ""} ${state.settings.navCollapsed ? "nav--collapsed" : ""}">
+        : html`<aside class="nav ${isCatalogArea ? "nav--catalog" : ""} ${isMessagePage ? "nav--massage" : ""} ${isMessageNavCollapsed ? "nav--collapsed" : ""}">
         ${
-          state.tab === "message"
+          isMessagePage
             ? html`
                 <div class="session-sidebar">
                   <button
-                    class="session-new"
+                    class="session-new btn primary"
                     type="button"
                     @click=${async () => {
                       const res = await createSession(state);
@@ -478,6 +480,29 @@ export function renderApp(state: AppViewState) {
                       })
                     }
                   </div>
+                </div>
+                <div class="nav--massage__footer">
+                  <button
+                    class="session-sidebar__toggle"
+                    type="button"
+                    title=${state.settings.navCollapsed ? "展开侧栏" : "收起侧栏"}
+                    aria-label=${state.settings.navCollapsed ? "展开侧栏" : "收起侧栏"}
+                    aria-expanded=${String(!state.settings.navCollapsed)}
+                    @click=${() =>
+                      state.applySettings({
+                        ...state.settings,
+                        navCollapsed: !state.settings.navCollapsed,
+                      })}
+                  >
+                    <span
+                      class="session-sidebar__toggle-icon ${state.settings.navCollapsed
+                        ? "session-sidebar__toggle-icon--expand"
+                        : "session-sidebar__toggle-icon--collapse"}"
+                      aria-hidden="true"
+                    >
+                      ${icons.arrowDown}
+                    </span>
+                  </button>
                 </div>
               `
             : isScheduledTasks
@@ -650,7 +675,7 @@ export function renderApp(state: AppViewState) {
         }
       </aside>`}
       <main class="content ${isChat ? "content--chat" : ""} ${isCatalogArea ? "content--catalog" : ""} ${state.tab === "tutorials" ? "content--tutorials" : ""} ${state.tab === "llmTrace" && state.llmTraceViewingSessionId != null ? "content--llm-trace-detail" : ""}">
-        ${isCatalogArea
+        ${isCatalogArea || isMessagePage
           ? nothing
           : html`
               <section class="content-header">
