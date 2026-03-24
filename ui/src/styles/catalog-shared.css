@@ -237,14 +237,11 @@
 }
 
 .content--catalog .emp-toolbar {
-  align-items: center;
   margin-bottom: 0;
 }
 
 .content--catalog .emp-toolbar__title {
-  font-size: 18px;
   font-weight: 800;
-  color: var(--text-primary);
 }
 
 .content--catalog .emp-toolbar__actions {
@@ -261,13 +258,8 @@
 .content--catalog .emp-search__input {
   height: 32px;
   padding: 0 10px 0 30px;
-  background: var(--bg);
   color: var(--text-primary);
   font-size: 13px;
-}
-
-.content--catalog .emp-search__input::placeholder {
-  color: var(--text-secondary);
 }
 
 .content--catalog .emp-search__icon {
@@ -289,11 +281,6 @@
   margin-bottom: 0;
   padding-bottom: 0;
   border-bottom: none;
-}
-
-.content--catalog .emp-grid {
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 16px;
 }
 
 .content--catalog .emp-card-wrap {
@@ -323,7 +310,6 @@
   top: 20px;
   right: 20px;
   gap: 8px;
-  align-items: center;
 }
 
 .content--catalog .emp-card__title {
@@ -331,16 +317,12 @@
   font-size: 14px;
   font-weight: 500;
   line-height: 22px;
-  color: var(--text-primary);
 }
 
 .content--catalog .emp-card__desc {
   color: var(--text-regular);
-  font-size: 13px;
   font-weight: normal;
   line-height: 20px;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
 }
 
 .content--catalog .emp-card__tags,
@@ -454,7 +436,4 @@
   border-color: var(--accent);
   background: var(--accent);
   color: #ffffff;
-  box-shadow:
-    var(--shadow-md),
-    0 0 20px color-mix(in srgb, var(--accent) 30%, transparent);
 }

@@ -27,10 +27,6 @@
   overflow: hidden;
 }
 
-:root[data-theme="light"] .config-sidebar {
-  background: var(--bg);
-}
-
 .config-sidebar__header {
   display: flex;
   align-items: center;
@@ -260,10 +256,6 @@
   border-bottom: 1px solid var(--border);
 }
 
-:root[data-theme="light"] .config-actions {
-  background: var(--bg);
-}
-
 .config-actions__left,
 .config-actions__right {
   display: flex;
@@ -384,10 +376,6 @@
   background: var(--bg);
 }
 
-:root[data-theme="light"] .config-section-hero {
-  background: var(--bg);
-}
-
 .config-section-hero__icon {
   width: 30px;
   height: 30px;
@@ -432,10 +420,6 @@
   border-bottom: 1px solid var(--border);
   background: var(--bg);
   overflow-x: auto;
-}
-
-:root[data-theme="light"] .config-subnav {
-  background: var(--bg);
 }
 
 .config-subnav__item {
@@ -562,10 +546,6 @@
   padding: 20px 22px;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
-}
-
-:root[data-theme="light"] .config-section-card__header {
-  background: var(--bg);
 }
 
 .config-section-card__icon {
@@ -781,10 +761,6 @@
   cursor: not-allowed;
 }
 
-:root[data-theme="light"] .cfg-number__btn {
-  background: var(--bg);
-}
-
 :root[data-theme="light"] .cfg-number__btn:hover:not(:disabled) {
   background: var(--border);
 }
@@ -841,10 +817,6 @@
   padding: 4px;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  background: var(--bg);
-}
-
-:root[data-theme="light"] .cfg-segmented {
   background: var(--bg);
 }
 
@@ -906,10 +878,6 @@
 
 :root[data-theme="light"] .cfg-toggle-row {
   background: white;
-}
-
-:root[data-theme="light"] .cfg-toggle-row:hover:not(.disabled) {
-  background: var(--bg);
 }
 
 .cfg-toggle-row__content {
@@ -1072,10 +1040,6 @@
   border-bottom: 1px solid var(--border);
 }
 
-:root[data-theme="light"] .cfg-array__header {
-  background: var(--bg);
-}
-
 .cfg-array__label {
   flex: 1;
   font-size: 14px;
@@ -1162,10 +1126,6 @@
   border-bottom: 1px solid var(--border);
 }
 
-:root[data-theme="light"] .cfg-array__item-header {
-  background: var(--bg);
-}
-
 .cfg-array__item-index {
   font-size: 11px;
   font-weight: 600;
@@ -1224,10 +1184,6 @@
   padding: 14px 18px;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
-}
-
-:root[data-theme="light"] .cfg-map__header {
-  background: var(--bg);
 }
 
 .cfg-map__label {
