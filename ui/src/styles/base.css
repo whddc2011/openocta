@@ -7,6 +7,7 @@
   --text-primary: #121317;
   --text-regular: #45474a;
   --text-secondary: #777a7e;
+  --text-placeholder: #b5b7bb;
 
   --border: #eeeff1;
   --border-primary: #dfe0e2;
@@ -63,6 +64,7 @@
   --text-primary: #fafafa;
   --text-regular: #e4e4e4;
   --text-secondary: #cecece;
+  --text-placeholder: #373737;
 
   --border: #27272a;
   --border-primary: #3f3f46;

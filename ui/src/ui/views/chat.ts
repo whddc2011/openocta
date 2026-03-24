@@ -282,6 +282,8 @@ export function renderChat(props: ChatProps) {
   };
 
   const hasAttachments = (props.attachments?.length ?? 0) > 0;
+  const hasDraftContent = props.draft.trim().length > 0;
+  const canSubmit = props.connected && (hasDraftContent || hasAttachments);
   const composePlaceholder = props.connected
     ? hasAttachments
       ? "添加消息（也可继续粘贴图片）…"
@@ -300,6 +302,35 @@ export function renderChat(props: ChatProps) {
     "帮我生成一份最近 15 分钟 MySQL 告警分析报告",
     "帮我梳理一个排查思路，并给出优先级",
   ];
+  const emptyIntro = isEmptyThread
+    ? html`
+        <div class="chat-empty__title">您好，有什么可以帮助您？</div>
+      `
+    : nothing;
+  const emptyPrompts = isEmptyThread
+    ? html`
+        <div class="chat-empty-prompts">
+          <div class="chat-empty-prompts__title">选一个试试</div>
+          <div class="chat-empty__prompts">
+            ${quickPrompts.map(
+              (p) => html`
+                <button
+                  class="btn chat-empty__prompt"
+                  type="button"
+                  ?disabled=${!props.connected}
+                  @click=${() => {
+                    props.onDraftChange(p);
+                    props.onSend();
+                  }}
+                >
+                  ${icons.zap} ${p}
+                </button>
+              `,
+            )}
+          </div>
+        </div>
+      `
+    : nothing;
   const thread = html`
     <div
       class="chat-thread"
@@ -343,38 +374,12 @@ export function renderChat(props: ChatProps) {
           return nothing;
         },
       )}
-      ${
-        isEmptyThread
-          ? html`
-              <div class="chat-empty">
-                <div class="chat-empty__title">您好，有什么可以帮助您？</div>
-                <div class="chat-empty__sub muted">从下面选一个快速开始，或直接输入你的问题。</div>
-                <div class="chat-empty__prompts">
-                  ${quickPrompts.map(
-                    (p) => html`
-                      <button
-                        class="btn chat-empty__prompt"
-                        type="button"
-                        ?disabled=${!props.connected}
-                        @click=${() => {
-                          props.onDraftChange(p);
-                          props.onSend();
-                        }}
-                      >
-                        ${icons.zap} ${p}
-                      </button>
-                    `,
-                  )}
-                </div>
-              </div>
-            `
-          : nothing
-      }
+      ${emptyIntro}
     </div>
   `;
 
   return html`
-    <section class="card chat">
+    <section class="chat ${isEmptyThread ? "chat-empty" : ""}">
       ${props.disabledReason ? html`<div class="callout">${props.disabledReason}</div>` : nothing}
 
       ${props.error ? html`<div class="callout danger">${props.error}</div>` : nothing}
@@ -501,7 +506,7 @@ export function renderChat(props: ChatProps) {
                 return;
               }
               e.preventDefault();
-              if (canCompose) {
+              if (canCompose && canSubmit) {
                 props.onSend();
               }
             }}
@@ -575,7 +580,7 @@ export function renderChat(props: ChatProps) {
               type="button"
               aria-label="发送"
               title="发送 (Enter)"
-              ?disabled=${!props.connected}
+              ?disabled=${!canSubmit}
               @click=${props.onSend}
             >
               ${isBusy ? icons.loader2 : icons.send}
@@ -584,6 +589,8 @@ export function renderChat(props: ChatProps) {
           </div>
         </div>
       </div>
+
+      ${emptyPrompts}
     </section>
   `;
 }

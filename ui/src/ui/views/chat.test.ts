@@ -49,6 +49,56 @@ function createProps(overrides: Partial<ChatProps> = {}): ChatProps {
 }
 
 describe("chat view", () => {
+  it("uses chat-empty on the section when the thread is empty", () => {
+    const container = document.createElement("div");
+    render(renderChat(createProps()), container);
+
+    expect(container.querySelector("section.chat.chat-empty")).not.toBeNull();
+    expect(container.querySelector("div.chat-empty")).toBeNull();
+    expect(container.textContent).toContain("选一个试试");
+  });
+
+  it("disables send when there is no draft content", () => {
+    const container = document.createElement("div");
+    render(
+      renderChat(
+        createProps({
+          draft: "   ",
+          attachments: [],
+        }),
+      ),
+      container,
+    );
+
+    const sendButton = container.querySelector<HTMLButtonElement>(".chat-compose__send");
+    expect(sendButton?.disabled).toBe(true);
+  });
+
+  it("keeps send enabled when attachments exist without draft text", () => {
+    const container = document.createElement("div");
+    render(
+      renderChat(
+        createProps({
+          draft: "   ",
+          attachments: [
+            {
+              id: "att-1",
+              dataUrl: "data:image/png;base64,abc",
+              mimeType: "image/png",
+              filename: "demo.png",
+              sizeBytes: 12,
+              kind: "image",
+            },
+          ],
+        }),
+      ),
+      container,
+    );
+
+    const sendButton = container.querySelector<HTMLButtonElement>(".chat-compose__send");
+    expect(sendButton?.disabled).toBe(false);
+  });
+
   it("shows a stop button when aborting is available", () => {
     const container = document.createElement("div");
     const onAbort = vi.fn();
