@@ -248,13 +248,18 @@ func (r *Runtime) SendStream(chatID string, stream <-chan *channels.RuntimeStrea
 		if chunk.Error != "" {
 			return fmt.Errorf("qq runtime stream error: %s", chunk.Error)
 		}
-		if !chunk.IsThinking {
+		// 过滤非最终结果类型，避免将思考阶段/中间态内容（如 "."）发送到 QQ。
+		if !chunk.IsThinking && chunk.IsFinal {
 			buf.WriteString(chunk.Content)
 		}
 		if chunk.IsComplete {
 			break
 		}
 	}
+	if buf.Len() == 0 {
+		return nil
+	}
+
 	return r.Send(&channels.RuntimeOutboundMessage{
 		ChatID:  chatID,
 		Content: buf.String(),
