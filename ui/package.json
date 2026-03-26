@@ -1,7 +1,7 @@
 {
   "name": "openclaw-control-ui",
   "private": true,
-  "version": "v0.2.0-28-gdf17186",
+  "version": "v0.2.0-55-g337b1e7",
   "type": "module",
   "scripts": {
     "build": "vite build",
