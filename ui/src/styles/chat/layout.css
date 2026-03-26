@@ -496,17 +496,6 @@
   background: linear-gradient(to bottom, transparent, var(--bg-content) 20%);
 }
 
-:root[data-theme="light"] .chat-compose__secondary {
-  background: #fff !important;
-  border-color: rgba(16, 24, 40, 0.12) !important;
-  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04) !important;
-}
-
-:root[data-theme="light"] .chat-compose__secondary:hover:not(:disabled) {
-  background: #f8fafc !important;
-  border-color: rgba(16, 24, 40, 0.2) !important;
-}
-
 .chat-compose__field {
   flex: 1 1 auto;
   min-width: 0;
@@ -571,23 +560,9 @@
 }
 
 .chat-compose__secondary {
-  display: none !important;
-  padding: 0 16px !important;
-  font-size: 13px !important;
-  font-weight: 500 !important;
-  height: 36px !important;
-  min-height: 36px !important;
-  line-height: 1 !important;
-  color: var(--text-regular) !important;
-  background: var(--bg) !important;
-  border: 1px solid var(--border) !important;
+  padding: 0 10px !important;
   border-radius: 18px !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
-}
-
-.chat-compose__secondary:hover:not(:disabled) {
-  color: var(--text-primary) !important;
-  border-color: var(--border-primary) !important;
+  height: 28px;
 }
 
 /* 通义千问风格：圆形绿色发送按钮 */

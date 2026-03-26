@@ -552,6 +552,10 @@
   min-width: 56px;
 }
 
+.nav--massage.nav--collapsed .session-search {
+  display: none;
+}
+
 .nav--massage.nav--collapsed .session-new {
   margin: 0 12px;
   padding: 0;

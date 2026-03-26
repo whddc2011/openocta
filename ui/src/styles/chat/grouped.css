@@ -40,7 +40,6 @@
   gap: 8px;
   align-items: baseline;
   margin-top: 6px;
-  display: none;
 }
 
 .chat-sender-name {
@@ -102,27 +101,13 @@
   flex-shrink: 0;
   align-self: flex-end; /* Align with last message in group */
   margin-bottom: 4px; /* Optical alignment */
-  display: none;
+  background: var(--border);
+  color: var(--text-secondary);
 }
 
 .chat-avatar.user {
   background: var(--accent-subtle);
   color: var(--accent);
-}
-
-.chat-avatar.assistant {
-  background: var(--bg-content);
-  color: var(--text-secondary);
-}
-
-.chat-avatar.other {
-  background: var(--bg-content);
-  color: var(--text-secondary);
-}
-
-.chat-avatar.tool {
-  background: var(--bg-content);
-  color: var(--text-secondary);
 }
 
 /* Image avatar support */
