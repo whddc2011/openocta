@@ -8,9 +8,12 @@ set -euo pipefail
 # 环境变量:
 #   SKIP_MAKE_WAILS=1  — 不执行 make wails（已由 Makefile 按架构执行 wails build 时使用）
 #   ARCH=arm64|amd64   — 写入 DMG 文件名后缀 -darwin-<ARCH>（便于区分双架构产物）
+#   OPENOCTA_MAC_DIST  — macOS 产物目录，默认 <仓库根>/dist-mac（勿用 dist/：GoReleaser 的 before
+#                        钩子跑完后会要求 dist 为空，否则会报错 dist is not empty）
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+MAC_DIST="${OPENOCTA_MAC_DIST:-${ROOT}/dist-mac}"
 BUILD_DMG=1
 
 [[ "${1:-}" = "--no-dmg" ]] && BUILD_DMG=0
@@ -29,9 +32,9 @@ if [[ ! -d "${APP}" ]]; then
   exit 1
 fi
 
-mkdir -p "${ROOT}/dist"
-cp -R "${APP}" "${ROOT}/dist/"
-echo "Built: ${ROOT}/dist/OpenOcta.app"
+mkdir -p "${MAC_DIST}"
+cp -R "${APP}" "${MAC_DIST}/"
+echo "Built: ${MAC_DIST}/OpenOcta.app"
 
 if [[ "${BUILD_DMG}" -eq 1 ]]; then
   VERSION=$(git describe --tags --always 2>/dev/null | sed 's/^v//' || echo "SNAPSHOT")
@@ -39,8 +42,8 @@ if [[ "${BUILD_DMG}" -eq 1 ]]; then
   if [[ -n "${ARCH:-}" ]]; then
     ARCH_SUFFIX="-darwin-${ARCH}"
   fi
-  DMG="${ROOT}/dist/OpenOcta-${VERSION}${ARCH_SUFFIX}.dmg"
-  DMG_TMP="${ROOT}/dist/OpenOcta-dmg-tmp"
+  DMG="${MAC_DIST}/OpenOcta-${VERSION}${ARCH_SUFFIX}.dmg"
+  DMG_TMP="${MAC_DIST}/OpenOcta-dmg-tmp"
   rm -rf "${DMG_TMP}" "${DMG}"
   mkdir -p "${DMG_TMP}"
   cp -R "${APP}" "${DMG_TMP}/"

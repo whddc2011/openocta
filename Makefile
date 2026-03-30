@@ -27,7 +27,7 @@ build: go
 
 # 清理
 clean:
-	rm -rf dist src/embed/frontend src/embed/config-schema.json src/embed/openocta.json.example openocta openocta.exe openocta-launcher openocta-launcher.exe src/build/bin
+	rm -rf dist dist-mac src/embed/frontend src/embed/config-schema.json src/embed/openocta.json.example openocta openocta.exe openocta-launcher openocta-launcher.exe src/build/bin
 
 # GoReleaser 快照构建（不发布）
 snapshot:
@@ -72,7 +72,7 @@ wails: embed prepare-wails-icons
 wails-nsis:
 	./build.sh wails-nsis
 
-# Wails + 打包 .dmg（macOS），产物在 dist/OpenOcta.app 和 dist/OpenOcta-<version>.dmg（当前机默认架构）
+# Wails + 打包 .dmg（macOS），产物在 dist-mac/（避免占用 GoReleaser 的 dist/）
 wails-dmg: wails
 	./deploy/macos/build-app.sh
 

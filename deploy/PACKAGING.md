@@ -9,12 +9,12 @@
 | 入口 | 用途 | 产物 |
 |------|------|------|
 | `make wails` | Wails 桌面应用（当前平台） | `src/build/bin/OpenOcta.app`（macOS）或 `OpenOcta.exe`（Windows） |
-| `make wails-dmg` | macOS .dmg（当前机架构） | `dist/OpenOcta.app`、`dist/OpenOcta-<version>.dmg` |
-| `make wails-dmg-arm64` / `wails-dmg-amd64` | 分别打 Apple Silicon / Intel 的 .dmg | `dist/OpenOcta-<version>-darwin-arm64.dmg` 等 |
+| `make wails-dmg` | macOS .dmg（当前机架构） | `dist-mac/OpenOcta.app`、`dist-mac/OpenOcta-<version>.dmg` |
+| `make wails-dmg-arm64` / `wails-dmg-amd64` | 分别打 Apple Silicon / Intel 的 .dmg | `dist-mac/OpenOcta-<version>-darwin-arm64.dmg` 等 |
 | `make wails-dmg-all` | 连续构建上述两个架构（仅 macOS） | 两个 `.dmg` |
 | `./build.sh wails` | 同 `make wails`，并复制到 `dist/` | `dist/` 下的 .app 或 .exe |
 | `./build.sh wails-nsis` | Windows NSIS 安装器（**需在 Windows 上执行**） | `src/build/bin/OpenOcta-amd64-installer.exe` |
-| `./deploy/macos/build-app.sh` | macOS .app + .dmg 打包 | `dist/OpenOcta.app`、`dist/OpenOcta-<version>.dmg` |
+| `./deploy/macos/build-app.sh` | macOS .app + .dmg 打包 | `dist-mac/OpenOcta.app`、`dist-mac/OpenOcta-<version>.dmg` |
 
 **Linux** 使用 GoReleaser 构建（deb/rpm/tar.gz），不涉及 Wails，参见 `.goreleaser.yaml` 与 `deploy/dist-README.md`。
 
@@ -89,7 +89,7 @@ make wails-dmg
 ./deploy/macos/build-app.sh --no-dmg
 ```
 
-- 产物：`dist/OpenOcta.app`、`dist/OpenOcta-<version>.dmg`
+- 产物：`dist-mac/OpenOcta.app`、`dist-mac/OpenOcta-<version>.dmg`（`dist-mac` 与 GoReleaser 的 `dist/` 分离，避免 before 钩子里生成 DMG 后触发「dist is not empty」。）
 - 版本号来自 `git describe --tags`
 
 #### 双架构 .dmg（arm64 + amd64）
@@ -103,7 +103,7 @@ make wails-dmg-arm64
 make wails-dmg-amd64
 ```
 
-- 产物示例：`dist/OpenOcta-<version>-darwin-arm64.dmg`、`dist/OpenOcta-<version>-darwin-amd64.dmg`
+- 产物示例：`dist-mac/OpenOcta-<version>-darwin-arm64.dmg`、`dist-mac/OpenOcta-<version>-darwin-amd64.dmg`
 - 若已由 Makefile 执行过 `wails build -platform ...`，可对 `deploy/macos/build-app.sh` 使用 `SKIP_MAKE_WAILS=1`（Makefile 已自动设置）。
 
 #### GoReleaser 附加 DMG 与 GitHub Release
@@ -112,7 +112,7 @@ make wails-dmg-amd64
    - 仅当 **`GORELEASER_INCLUDE_DMG=1`** 且在 **Darwin** 上运行时，会执行 `make embed && make wails-dmg-all`。  
    - Linux CI 请勿设置该变量，钩子会跳过。
 
-2. **上传 DMG**：`.goreleaser.yaml` 的 `release.extra_files` 已包含 `glob: ./dist/OpenOcta*.dmg`；存在则随 Release 上传，不存在则跳过（Linux-only 流水线也可共用同一配置）。
+2. **上传 DMG**：`.goreleaser.yaml` 的 `release.extra_files` 已包含 `glob: ./dist-mac/OpenOcta*.dmg`（与 `deploy/macos/build-app.sh` 输出目录一致）；存在则随 Release 上传，不存在则跳过（Linux-only 流水线也可共用同一配置）。
 
    ```bash
    export GORELEASER_INCLUDE_DMG=1   # 仅 macOS 打 DMG 时需要
@@ -191,8 +191,8 @@ make launcher # 产出 openocta-launcher
 
 | 平台 | 默认输出 | 复制到 dist/ 后 |
 |------|----------|----------------|
-| macOS | `src/build/bin/OpenOcta.app` | `dist/OpenOcta.app` |
-| macOS .dmg | - | `dist/OpenOcta-<version>.dmg` |
+| macOS | `src/build/bin/OpenOcta.app` | `dist-mac/OpenOcta.app` |
+| macOS .dmg | - | `dist-mac/OpenOcta-<version>.dmg` |
 | Windows .exe | `src/build/bin/OpenOcta.exe` | `dist/OpenOcta.exe` |
 | Windows 安装器 | `src/build/bin/OpenOcta-amd64-installer.exe` | `dist/`（build.sh 会复制） |
 

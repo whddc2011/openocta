@@ -5,7 +5,7 @@
 #
 # macOS Wails .dmg（arm64 + amd64）：
 # - 仅在 macOS 上可构建；设置 GORELEASER_INCLUDE_DMG=1 时运行 scripts/goreleaser-wails-dmg.sh。
-# - release.extra_files 已包含 dist/OpenOcta*.dmg；有则上传，无则跳过。
+# - release.extra_files 使用 dist-mac/OpenOcta*.dmg（与 deploy/macos/build-app.sh 一致；勿写入 dist/）。
 # - 勿使用多个 -f：GoReleaser 只认最后一个配置文件，会丢失 builds 并报「does not contain a main function」。
 
 version: 2
@@ -23,7 +23,7 @@ before:
     - make ui
     - ls src/embed/
     - cd src && go mod download
-    # 可选：macOS + GORELEASER_INCLUDE_DMG=1 时生成 dist/OpenOcta-*-darwin-{arm64,amd64}.dmg
+    # 可选：macOS + GORELEASER_INCLUDE_DMG=1 时生成 dist-mac/OpenOcta-*-darwin-{arm64,amd64}.dmg
     - ./scripts/goreleaser-wails-dmg.sh
 
 builds:
@@ -104,4 +104,4 @@ release:
     name: "{{ .Env.CI_PROJECT_NAME }}"
   # Wails 打的 DMG（make wails-dmg-all）；无文件时 GoReleaser 仅跳过匹配，不报错
   extra_files:
-    - glob: ./dist/OpenOcta*.dmg
+    - glob: ./dist-mac/OpenOcta*.dmg

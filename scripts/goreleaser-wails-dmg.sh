@@ -23,4 +23,4 @@ make embed
 make wails-dmg-all
 
 echo "goreleaser-wails-dmg: done:"
-ls -la "${ROOT}/dist/"OpenOcta*.dmg 2>/dev/null || true
+ls -la "${ROOT}/dist-mac/"OpenOcta*.dmg 2>/dev/null || true
