@@ -77,6 +77,17 @@ const TAB_PATHS: Record<Tab, string> = {
 
 const PATH_TO_TAB = new Map(Object.entries(TAB_PATHS).map(([tab, path]) => [path, tab as Tab]));
 
+const ACTIVE_TOP_TAB_ICONS: Partial<Record<Tab, IconName>> = {
+  message: "messageSquareActive",
+  scheduledTasks: "alarmClockActive",
+  employeeMarket: "usersActive",
+  skillLibrary: "zapActive",
+  toolLibrary: "wrenchActive",
+  tutorials: "bookActive",
+  community: "globeActive",
+  config: "settingsActive",
+};
+
 export function normalizeBasePath(basePath: string): string {
   if (!basePath) {
     return "";
@@ -156,7 +167,14 @@ export function inferBasePathFromPathname(pathname: string): string {
   return `/${segments.join("/")}`;
 }
 
-export function iconForTab(tab: Tab): IconName {
+export function iconForTab(tab: Tab, active = false): IconName {
+  if (active) {
+    const activeIcon = ACTIVE_TOP_TAB_ICONS[tab];
+    if (activeIcon) {
+      return activeIcon;
+    }
+  }
+
   switch (tab) {
     case "message":
       return "messageSquare";

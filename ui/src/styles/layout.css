@@ -1645,6 +1645,13 @@ button.nav-item {
   min-width: 0;
 }
 
+.topbar-version {
+  color: var(--text-secondary);
+  font-size: 10px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
 .top-tabs {
   height: 100%;
   display: flex;
@@ -1730,10 +1737,6 @@ button.nav-item {
   box-sizing: border-box;
   border: none;
   color: var(--text-regular);
-}
-
-.topbar-status .pill--version {
-  gap: 4px;
 }
 
 .topbar-status .pill .mono {

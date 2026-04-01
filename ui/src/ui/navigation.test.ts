@@ -26,6 +26,13 @@ describe("iconForTab", () => {
   });
 
   it("returns stable icons for known tabs", () => {
+    expect(iconForTab("message")).toBe("messageSquare");
+    expect(iconForTab("scheduledTasks")).toBe("alarmClock");
+    expect(iconForTab("employeeMarket")).toBe("users");
+    expect(iconForTab("skillLibrary")).toBe("zap");
+    expect(iconForTab("toolLibrary")).toBe("wrench");
+    expect(iconForTab("tutorials")).toBe("book");
+    expect(iconForTab("community")).toBe("globe");
     expect(iconForTab("chat")).toBe("messageSquare");
     expect(iconForTab("overview")).toBe("overviewGrid");
     expect(iconForTab("channels")).toBe("link");
@@ -43,6 +50,24 @@ describe("iconForTab", () => {
     expect(iconForTab("envVars")).toBe("envVars");
     expect(iconForTab("llmTrace")).toBe("traceBars");
     expect(iconForTab("logs")).toBe("scrollText");
+  });
+
+  it("returns active icons only for top-tab items", () => {
+    expect(iconForTab("message", true)).toBe("messageSquareActive");
+    expect(iconForTab("scheduledTasks", true)).toBe("alarmClockActive");
+    expect(iconForTab("employeeMarket", true)).toBe("usersActive");
+    expect(iconForTab("skillLibrary", true)).toBe("zapActive");
+    expect(iconForTab("toolLibrary", true)).toBe("wrenchActive");
+    expect(iconForTab("tutorials", true)).toBe("bookActive");
+    expect(iconForTab("community", true)).toBe("globeActive");
+    expect(iconForTab("config", true)).toBe("settingsActive");
+  });
+
+  it("does not switch unrelated tabs to active-only icons", () => {
+    expect(iconForTab("chat", true)).toBe("messageSquare");
+    expect(iconForTab("skills", true)).toBe("zap");
+    expect(iconForTab("cronHistory", true)).toBe("historyClock");
+    expect(iconForTab("overview", true)).toBe("overviewGrid");
   });
 
   it("returns a fallback icon for unknown tab", () => {

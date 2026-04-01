@@ -547,6 +547,7 @@ export function renderApp(state: AppViewState) {
               />
             </div>
           </div>
+          <span class="topbar-version">${state.configSchemaVersion ?? "---"}</span>
         </div>
         <nav class="top-tabs" aria-label="Primary navigation">
           ${[
@@ -560,7 +561,13 @@ export function renderApp(state: AppViewState) {
             { tab: "config", label: "配置" },
           ].map((item) => {
             const tab = (item as any).tab;
-            const iconName = tab ? iconForTab(tab) : "globe";
+            const active =
+              tab === "scheduledTasks"
+                ? isScheduledTasks
+                : tab === "config"
+                  ? isConfigArea
+                  : Boolean(tab && state.tab === tab && !(item as any).href);
+            const iconName = tab ? iconForTab(tab, active) : "globe";
             const iconEl = html`<span class="nav-item__icon" aria-hidden="true">${icons[iconName]}</span>`;
             if ((item as any).href) {
               const extHref = String((item as any).href);
@@ -579,12 +586,6 @@ export function renderApp(state: AppViewState) {
                 </button>
               `;
             }
-            const active =
-              tab === "scheduledTasks"
-                ? isScheduledTasks
-                : tab === "config"
-                  ? isConfigArea
-                  : state.tab === tab;
             return html`
               <button
                 class="top-tab ${active ? "top-tab--active" : ""}"
@@ -598,10 +599,6 @@ export function renderApp(state: AppViewState) {
           })}
         </nav>
         <div class="topbar-status">
-          <div class="pill pill--version">
-            <span class="topbar-status__label">Version</span>
-            <span class="topbar-status__value">${state.configSchemaVersion ?? "---"}</span>
-          </div>
           <div class="pill pill--link">
             <button
               type="button"
