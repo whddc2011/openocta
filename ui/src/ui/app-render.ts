@@ -2705,6 +2705,10 @@ export function renderApp(state: AppViewState) {
                 onNewSession: () => state.handleSendChat("/new", { restoreDraft: true }),
                 showNewMessages: state.chatNewMessagesBelow,
                 onScrollToBottom: () => state.scrollToBottom(),
+                conversationOnly: state.chatConversationOnly,
+                onConversationOnlyChange: (next) => {
+                  state.chatConversationOnly = next;
+                },
                 // Sidebar props for tool output viewing
                 sidebarOpen: state.sidebarOpen,
                 sidebarContent: state.sidebarContent,

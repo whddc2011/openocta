@@ -40,7 +40,7 @@ export function extractToolCards(message: unknown): ToolCard[] {
     const name =
       (typeof m.toolName === "string" && m.toolName) ||
       (typeof m.tool_name === "string" && m.tool_name) ||
-      "tool";
+      "Tool Output";
     const text = extractTextCached(message) ?? undefined;
     cards.push({ kind: "result", name, text });
   }
@@ -48,15 +48,26 @@ export function extractToolCards(message: unknown): ToolCard[] {
   return cards;
 }
 
-export function renderToolCardSidebar(card: ToolCard, onOpenSidebar?: (content: string) => void) {
+export type ToolCardRenderOptions = {
+  /** Hide result body on the card (shown by parent collapse / sidebar). */
+  suppressResultOutput?: boolean;
+};
+
+export function renderToolCardSidebar(
+  card: ToolCard,
+  onOpenSidebar?: (content: string) => void,
+  opts?: ToolCardRenderOptions,
+) {
   const display = resolveToolDisplay({ name: card.name, args: card.args });
   const detail = formatToolDetail(display);
-  const hasText = Boolean(card.text?.trim());
+  const suppressOut = Boolean(opts?.suppressResultOutput && card.kind === "result");
+  const hasResultText = Boolean(card.text?.trim());
+  const showTextOnCard = hasResultText && !suppressOut;
 
   const canClick = Boolean(onOpenSidebar);
   const handleClick = canClick
     ? () => {
-        if (hasText) {
+        if (hasResultText) {
           onOpenSidebar!(formatToolOutputForSidebar(card.text!));
           return;
         }
@@ -67,10 +78,11 @@ export function renderToolCardSidebar(card: ToolCard, onOpenSidebar?: (content: 
       }
     : undefined;
 
-  const isShort = hasText && (card.text?.length ?? 0) <= TOOL_INLINE_THRESHOLD;
-  const showCollapsed = hasText && !isShort;
-  const showInline = hasText && isShort;
-  const isEmpty = !hasText;
+  const rawTextLen = card.text?.length ?? 0;
+  const isShort = showTextOnCard && rawTextLen <= TOOL_INLINE_THRESHOLD;
+  const showCollapsed = showTextOnCard && !isShort;
+  const showInline = showTextOnCard && isShort;
+  const isEmpty = !hasResultText;
 
   return html`
     <div
@@ -97,7 +109,7 @@ export function renderToolCardSidebar(card: ToolCard, onOpenSidebar?: (content: 
         </div>
         ${
           canClick
-            ? html`<span class="chat-tool-card__action">${hasText ? "View" : ""} ${icons.check}</span>`
+            ? html`<span class="chat-tool-card__action">${hasResultText ? "View" : ""} ${icons.check}</span>`
             : nothing
         }
         ${isEmpty && !canClick ? html`<span class="chat-tool-card__status">${icons.check}</span>` : nothing}

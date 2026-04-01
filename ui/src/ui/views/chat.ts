@@ -60,6 +60,9 @@ export type ChatProps = {
   // Scroll control
   showNewMessages?: boolean;
   onScrollToBottom?: () => void;
+  /** When true, thread shows only assistant/user (no tool rows). When false, tool calls appear with I/O folded. */
+  conversationOnly?: boolean;
+  onConversationOnlyChange?: (next: boolean) => void;
   // Event handlers
   onRefresh: () => void;
   onToggleFocusMode: () => void;
@@ -378,8 +381,28 @@ export function renderChat(props: ChatProps) {
     </div>
   `;
 
+  const conversationOnly = props.conversationOnly ?? true;
+  const showToolTrace = !conversationOnly;
+
   return html`
-    <section class="chat ${isEmptyThread ? "chat-empty" : ""}">
+    <section class="chat ${isEmptyThread ? "chat-empty" : ""} ${props.focusMode ? "chat--focus" : ""}">
+      ${
+        props.onConversationOnlyChange
+          ? html`
+              <button
+                type="button"
+                class="chat-brain-toggle ${showToolTrace ? "chat-brain-toggle--active" : ""}"
+                aria-pressed=${showToolTrace ? "true" : "false"}
+                aria-label=${showToolTrace ? "隐藏工具调用，仅显示对话" : "显示工具调用（输入输出默认折叠）"}
+                title=${showToolTrace ? "仅对话" : "显示工具调用"}
+                @click=${() => props.onConversationOnlyChange?.(!conversationOnly)}
+              >
+                ${icons.brain}
+              </button>
+            `
+          : nothing
+      }
+
       ${props.disabledReason ? html`<div class="callout">${props.disabledReason}</div>` : nothing}
 
       ${props.error ? html`<div class="callout danger">${props.error}</div>` : nothing}
@@ -642,6 +665,7 @@ function buildChatItems(props: ChatProps): Array<ChatItem | MessageGroup> {
   const items: ChatItem[] = [];
   const history = Array.isArray(props.messages) ? props.messages : [];
   const tools = Array.isArray(props.toolMessages) ? props.toolMessages : [];
+  const conversationOnly = props.conversationOnly ?? true;
   const historyStart = Math.max(0, history.length - CHAT_HISTORY_RENDER_LIMIT);
   if (historyStart > 0) {
     items.push({
@@ -662,13 +686,17 @@ function buildChatItems(props: ChatProps): Array<ChatItem | MessageGroup> {
       continue;
     }
 
+    if (conversationOnly && normalized.role === "toolResult") {
+      continue;
+    }
+
     items.push({
       kind: "message",
       key: messageKey(msg, i),
       message: msg,
     });
   }
-  if (props.showThinking) {
+  if (props.showThinking && !conversationOnly) {
     for (let i = 0; i < tools.length; i++) {
       items.push({
         kind: "message",

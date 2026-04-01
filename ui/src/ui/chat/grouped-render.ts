@@ -1,7 +1,8 @@
 import { html, nothing } from "lit";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import type { AssistantIdentity } from "../assistant-identity.ts";
-import type { MessageGroup } from "../types/chat-types.ts";
+import type { MessageGroup, ToolCard } from "../types/chat-types.ts";
+import { icons } from "../icons.ts";
 import { toSanitizedMarkdownHtml } from "../markdown.ts";
 import { renderCopyAsMarkdownButton } from "./copy-as-markdown.ts";
 import {
@@ -151,7 +152,9 @@ export function renderMessageGroup(
       ? "You"
       : normalizedRole === "assistant"
         ? assistantName
-        : normalizedRole;
+        : normalizedRole === "tool"
+          ? "Tool"
+          : normalizedRole;
   const roleClass =
     normalizedRole === "user" ? "user" : normalizedRole === "assistant" ? "assistant" : "other";
   const timestamp = new Date(group.timestamp).toLocaleTimeString([], {
@@ -255,6 +258,154 @@ function renderMessageImages(images: ImageBlock[]) {
   `;
 }
 
+/** Plain tool output only (no ### headings). Names appear on cards above; avoids a lone "Tool Output" title in the fold panel. */
+function aggregateToolResultMarkdown(cards: ToolCard[]): string | null {
+  const parts: string[] = [];
+  for (const c of cards) {
+    if (c.kind !== "result" || !c.text?.trim()) {
+      continue;
+    }
+    parts.push(c.text.trim());
+  }
+  return parts.length > 0 ? parts.join("\n\n---\n\n") : null;
+}
+
+function collapseWhitespace(s: string): string {
+  return s.replace(/\s+/g, " ").trim();
+}
+
+/** Plain text under ### tool headings (for deduping with extractText). */
+function stripAggregatedToolHeadings(aggregated: string): string {
+  return aggregated
+    .split(/\n\n---\n\n/)
+    .map((part) => part.replace(/^###[^\n]+\n+/, "").trim())
+    .join("\n\n")
+    .trim();
+}
+
+function combinedResultPlaintext(cards: ToolCard[]): string {
+  return cards
+    .filter((c) => c.kind === "result" && c.text?.trim())
+    .map((c) => c.text!.trim())
+    .join("\n\n");
+}
+
+/**
+ * Prefer a single body: extractText often duplicates toolresult card text; avoid showing both.
+ */
+function mergeToolExpandableBody(markdown: string | null, cards: ToolCard[]): string | null {
+  const md = (markdown ?? "").trim();
+  const aggregated = aggregateToolResultMarkdown(cards)?.trim() ?? "";
+  if (!md && !aggregated) {
+    return null;
+  }
+  if (!aggregated) {
+    return md || null;
+  }
+  if (!md) {
+    return aggregated;
+  }
+  const combined = combinedResultPlaintext(cards);
+  const strippedAgg = stripAggregatedToolHeadings(aggregated);
+  const dupWithCards =
+    combined &&
+    (md === combined ||
+      collapseWhitespace(md) === collapseWhitespace(combined) ||
+      combined.includes(md) ||
+      md.includes(combined));
+  const dupWithAggShape =
+    md === strippedAgg || collapseWhitespace(md) === collapseWhitespace(strippedAgg);
+  if (dupWithCards || dupWithAggShape) {
+    return aggregated;
+  }
+  return `${md}\n\n---\n\n${aggregated}`;
+}
+
+function toggleToolResultBody(e: Event) {
+  const btn = e.currentTarget as HTMLButtonElement;
+  if (btn.disabled) {
+    return;
+  }
+  e.stopPropagation();
+  const open = btn.getAttribute("aria-expanded") === "true";
+  const next = !open;
+  btn.setAttribute("aria-expanded", String(next));
+  const block = btn.closest(".chat-tool-result-block");
+  const body = block?.querySelector(".chat-tool-result-body") as HTMLElement | null;
+  if (body) {
+    body.hidden = !next;
+  }
+  block?.classList.toggle("chat-tool-result-block--open", next);
+}
+
+function renderCollapsedToolResult(
+  toolCards: ToolCard[],
+  images: ImageBlock[],
+  markdown: string | null,
+  reasoningMarkdown: string | null,
+  opts: { isStreaming: boolean; showReasoning: boolean },
+  onOpenSidebar?: (content: string) => void,
+) {
+  const bodyDoc = mergeToolExpandableBody(markdown, toolCards);
+  const hasExpandable =
+    Boolean(bodyDoc?.trim()) ||
+    images.length > 0 ||
+    Boolean(reasoningMarkdown?.trim());
+
+  const toolsInner = toolCards.length
+    ? toolCards.map((c) =>
+        renderToolCardSidebar(c, onOpenSidebar, { suppressResultOutput: true }),
+      )
+    : html`<div class="chat-tool-result-placeholder muted">工具输出</div>`;
+
+  return html`
+    <div class="chat-tool-result-block">
+      <div class="chat-tool-result-main chat-bubble fade-in ${opts.isStreaming ? "streaming" : ""}">
+        <div class="chat-tool-result-row">
+          <button
+            type="button"
+            class="btn btn--icon chat-tool-result-toggle"
+            aria-expanded="false"
+            aria-label=${hasExpandable ? "展开工具输出详情" : "无详情可展开"}
+            title=${hasExpandable ? "展开工具输出" : "无输出正文"}
+            ?disabled=${!hasExpandable}
+            @click=${toggleToolResultBody}
+          >
+            ${icons.chevronRight}
+          </button>
+          <div class="chat-tool-result-tools">${toolsInner}</div>
+        </div>
+      </div>
+      ${
+        hasExpandable
+          ? html`
+              <div class="chat-tool-result-body" hidden>
+                ${
+                  opts.showReasoning && reasoningMarkdown
+                    ? html`
+                        <details class="chat-thinking" open>
+                          <summary class="chat-thinking__summary">思考过程</summary>
+                          <div class="chat-thinking__content">
+                            ${unsafeHTML(toSanitizedMarkdownHtml(reasoningMarkdown))}
+                          </div>
+                        </details>
+                      `
+                    : nothing
+                }
+                ${renderMessageImages(images)}
+                ${
+                  bodyDoc?.trim()
+                    ? html`<div class="chat-text">${unsafeHTML(toSanitizedMarkdownHtml(bodyDoc))}</div>`
+                    : nothing
+                }
+              </div>
+            `
+          : nothing
+      }
+    </div>
+  `;
+}
+
 function renderGroupedMessage(
   message: unknown,
   opts: { isStreaming: boolean; showReasoning: boolean },
@@ -293,8 +444,15 @@ function renderGroupedMessage(
     .filter(Boolean)
     .join(" ");
 
-  if (!markdown && hasToolCards && isToolResult) {
-    return html`${toolCards.map((card) => renderToolCardSidebar(card, onOpenSidebar))}`;
+  if (isToolResult) {
+    return renderCollapsedToolResult(
+      toolCards,
+      images,
+      markdown,
+      reasoningMarkdown,
+      opts,
+      onOpenSidebar,
+    );
   }
 
   if (!markdown && !hasToolCards && !hasImages) {

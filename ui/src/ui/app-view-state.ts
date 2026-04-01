@@ -69,6 +69,7 @@ export type AppViewState = {
   nodesLoading: boolean;
   nodes: Array<Record<string, unknown>>;
   chatNewMessagesBelow: boolean;
+  chatConversationOnly: boolean;
   sidebarOpen: boolean;
   sidebarContent: string | null;
   sidebarError: string | null;
