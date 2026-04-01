@@ -2272,12 +2272,15 @@ export function renderApp(state: AppViewState) {
                   await onRefresh();
                 },
                 onEdit: (serverKey) => {
-                  if (!state.configForm && state.configSnapshot?.config) {
-                    state.configForm = cloneConfigObject(state.configSnapshot.config as Record<string, unknown>);
-                  }
-                  handleMcpSelect(state, serverKey);
-                  state.toolLibraryMcpEditModalOpen = true;
-                  state.toolLibraryMcpEditServerKey = serverKey;
+                  void (async () => {
+                    // 工具库 Tab 此前未纳入 refreshActiveTab 的 loadConfig：刷新后 configSnapshot 可能仍为空，编辑会误以为无配置。
+                    if (state.client && state.connected) {
+                      await loadConfig(state);
+                    }
+                    handleMcpSelect(state, serverKey);
+                    state.toolLibraryMcpEditModalOpen = true;
+                    state.toolLibraryMcpEditServerKey = state.mcpSelectedKey ?? serverKey;
+                  })();
                 },
                 onQueryChange: (next) => (state.toolLibraryQuery = next),
                 onRefresh: async () => {
@@ -3330,8 +3333,12 @@ export function renderApp(state: AppViewState) {
           ? (() => {
               const sk = state.toolLibraryMcpEditServerKey;
               const cfg = state.configForm ?? (state.configSnapshot?.config as Record<string, unknown> | null);
+              const snapCfg = state.configSnapshot?.config as Record<string, unknown> | null | undefined;
               const mcp = cfg?.mcp as { servers?: Record<string, import("./views/mcp.ts").McpServerEntry> } | undefined;
-              const entry = (mcp?.servers?.[sk] ?? {}) as import("./views/mcp.ts").McpServerEntry;
+              const snapMcp = snapCfg?.mcp as
+                | { servers?: Record<string, import("./views/mcp.ts").McpServerEntry> }
+                | undefined;
+              const entry = (mcp?.servers?.[sk] ?? snapMcp?.servers?.[sk] ?? {}) as import("./views/mcp.ts").McpServerEntry;
               return renderMcpEditModal({
                 open: true,
                 serverKey: sk,

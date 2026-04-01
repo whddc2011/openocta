@@ -180,6 +180,43 @@ func mergeSkillsListWithLocalManaged(skills []map[string]interface{}, env func(s
 	return append(skills, extras...)
 }
 
+// resolveInstalledMcpServerKey 将 .install-metadata.json 中的 localId 对齐到 openocta.json 里实际存在的 mcp.servers 键，
+// 避免工具库卡片携带错误 serverKey 导致编辑弹窗读不到配置。
+func resolveInstalledMcpServerKey(snap *handlers.ConfigSnapshot, metaKey string) string {
+	metaKey = strings.TrimSpace(metaKey)
+	if snap == nil || snap.Config == nil || snap.Config.Mcp == nil || len(snap.Config.Mcp.Servers) == 0 {
+		return metaKey
+	}
+	servers := snap.Config.Mcp.Servers
+	if metaKey != "" {
+		if _, ok := servers[metaKey]; ok {
+			return metaKey
+		}
+		lmeta := strings.ToLower(metaKey)
+		for k := range servers {
+			if strings.ToLower(k) == lmeta {
+				return k
+			}
+		}
+		var hits []string
+		for k := range servers {
+			lk := strings.ToLower(k)
+			if strings.Contains(lk, lmeta) || strings.Contains(lmeta, lk) {
+				hits = append(hits, k)
+			}
+		}
+		if len(hits) == 1 {
+			return hits[0]
+		}
+	}
+	if len(servers) == 1 {
+		for k := range servers {
+			return k
+		}
+	}
+	return metaKey
+}
+
 // appendLocalOnlyMcpsToMarketList 追加仅存在于本地配置、且当前列表中尚未以「已安装 + serverKey」展示的 MCP（用户手动添加或元数据 remoteId 与官网列表脱节时兜底）。
 // 注意：不能仅用 install-metadata 的 localId 集合判断「已关联官网」——若元数据仍在但远程列表无对应 id，合并阶段不会打上 installed，仅用 localId 排除会导致该服务器从工具库彻底消失。
 func appendLocalOnlyMcpsToMarketList(mcps []map[string]interface{}, env func(string) string) []map[string]interface{} {
@@ -580,13 +617,14 @@ func (s *Server) handleSiteMcps(w http.ResponseWriter, r *http.Request) {
 	if mcps == nil {
 		mcps = []map[string]interface{}{}
 	}
+	snap, _ := handlers.LoadConfigSnapshot(env)
 	mcpInstallMap := installmetadata.McpInstallMap(env)
 	for i := range mcps {
 		if id, ok := mcps[i]["id"]; ok {
 			rid := fmt.Sprint(id)
 			if serverKey, ok := mcpInstallMap[rid]; ok {
 				mcps[i]["installed"] = true
-				mcps[i]["serverKey"] = serverKey
+				mcps[i]["serverKey"] = resolveInstalledMcpServerKey(snap, serverKey)
 			}
 		}
 	}

@@ -138,6 +138,7 @@ export function renderMcpAddConnectionFields(
         >
           ${MCP_COMMAND_OPTIONS.map((c) => html`<option value=${c}>${c}</option>`)}
         </select></span>
+      </div>
       <div class="field">
         <span>${t("mcpArgs")}</span>
         <span class="input"><input
@@ -219,6 +220,7 @@ function renderEditConnectionTypeFields(
         >
           ${MCP_COMMAND_OPTIONS_EDIT.map((c) => html`<option value=${c}>${c}</option>`)}
         </select></span>
+      </div>
       <div class="field">
         <span>${t("mcpArgs")}</span>
         <span class="input"><input

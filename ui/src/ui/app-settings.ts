@@ -205,6 +205,9 @@ export async function refreshActiveTab(host: SettingsHost) {
   if (host.tab === "skills") {
     await loadSkills(host as unknown as OpenClawApp);
   }
+  if (host.tab === "toolLibrary") {
+    await loadConfig(host as unknown as Parameters<typeof loadConfig>[0]);
+  }
   if (host.tab === "mcp") {
     await loadConfig(host as unknown as Parameters<typeof loadConfig>[0]);
     syncLlmTraceFromConfig(host as unknown as Parameters<typeof syncLlmTraceFromConfig>[0]);

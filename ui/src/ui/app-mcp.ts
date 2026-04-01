@@ -107,15 +107,98 @@ function inferConnectionType(entry: McpServerEntry | undefined): "stdio" | "url"
   return "stdio";
 }
 
-export function handleMcpSelect(host: AppViewState, key: string | null) {
-  host.mcpSelectedKey = key;
-  host.mcpRawError = null;
-  if (key) {
-    const servers = (host.configForm?.mcp as { servers?: Record<string, McpServerEntry> })?.servers ?? {};
-    const entry = servers[key];
-    host.mcpRawJson = entry ? JSON.stringify(entry, null, 2) : "{}";
-    host.mcpEditConnectionType = inferConnectionType(entry);
+/** 是否为「有意义的」MCP 连接配置（与磁盘上条目对齐时用）。 */
+function mcpEntryLooksConfigured(e: McpServerEntry | undefined): boolean {
+  if (!e || typeof e !== "object") return false;
+  return !!(
+    (typeof e.command === "string" && e.command.trim() !== "") ||
+    (typeof e.url === "string" && e.url.trim() !== "") ||
+    (typeof e.service === "string" &&
+      e.service.trim() !== "" &&
+      typeof e.serviceUrl === "string" &&
+      e.serviceUrl.trim() !== "")
+  );
+}
+
+/**
+ * 工具库卡片上的 serverKey 来自 .install-metadata 的 localId，可能与 openocta.json 里 mcp.servers 的真实键不一致；
+ * 不解析则编辑弹窗用错 key，表单与 raw JSON 会一直像「空配置」。
+ */
+function resolveMcpServerKeyAndEntry(
+  requestedKey: string,
+  formServers: Record<string, McpServerEntry>,
+  snapServers: Record<string, McpServerEntry>,
+): { key: string; entry: McpServerEntry | undefined } {
+  const get = (k: string) => formServers[k] ?? snapServers[k];
+
+  if (mcpEntryLooksConfigured(get(requestedKey))) {
+    return { key: requestedKey, entry: get(requestedKey) };
   }
+
+  const lower = requestedKey.toLowerCase();
+  for (const k of new Set([...Object.keys(formServers), ...Object.keys(snapServers)])) {
+    if (k.toLowerCase() === lower && mcpEntryLooksConfigured(get(k))) {
+      return { key: k, entry: get(k) };
+    }
+  }
+
+  const snapKeys = Object.keys(snapServers);
+  if (snapKeys.length === 1 && mcpEntryLooksConfigured(snapServers[snapKeys[0]])) {
+    const k = snapKeys[0];
+    return { key: k, entry: snapServers[k] };
+  }
+
+  const q = requestedKey.toLowerCase();
+  const hits = snapKeys.filter(
+    (k) => k.toLowerCase().includes(q) || q.includes(k.toLowerCase()),
+  );
+  if (hits.length === 1 && mcpEntryLooksConfigured(snapServers[hits[0]])) {
+    const k = hits[0];
+    return { key: k, entry: snapServers[k] };
+  }
+
+  return { key: requestedKey, entry: get(requestedKey) };
+}
+
+export function handleMcpSelect(host: AppViewState, key: string | null) {
+  host.mcpRawError = null;
+  if (!key) {
+    host.mcpSelectedKey = null;
+    return;
+  }
+
+  if (!host.configForm && host.configSnapshot?.config) {
+    host.configForm = cloneConfigObject(host.configSnapshot.config as Record<string, unknown>);
+  }
+
+  const snapServers =
+    (host.configSnapshot?.config as { mcp?: { servers?: Record<string, McpServerEntry> } } | undefined)?.mcp
+      ?.servers ?? {};
+
+  const formServers = (host.configForm?.mcp as { servers?: Record<string, McpServerEntry> })?.servers ?? {};
+  const { key: resolvedKey, entry: resolvedEntry } = resolveMcpServerKeyAndEntry(key, formServers, snapServers);
+  host.mcpSelectedKey = resolvedKey;
+
+  if (host.configForm && snapServers[resolvedKey] !== undefined) {
+    const base = host.configForm as { mcp?: { servers?: Record<string, McpServerEntry> } };
+    if (!base.mcp) {
+      base.mcp = { servers: {} };
+    }
+    if (!base.mcp.servers) {
+      base.mcp.servers = {};
+    }
+    if (base.mcp.servers[resolvedKey] === undefined) {
+      base.mcp.servers[resolvedKey] = cloneConfigObject(snapServers[resolvedKey] as McpServerEntry);
+    }
+  }
+
+  const entry =
+    (host.configForm?.mcp as { servers?: Record<string, McpServerEntry> })?.servers?.[resolvedKey] ??
+    snapServers[resolvedKey] ??
+    resolvedEntry;
+
+  host.mcpRawJson = entry ? JSON.stringify(entry, null, 2) : "{}";
+  host.mcpEditConnectionType = inferConnectionType(entry);
 }
 
 export function handleMcpEditConnectionTypeChange(host: AppViewState, type: "stdio" | "url" | "service") {

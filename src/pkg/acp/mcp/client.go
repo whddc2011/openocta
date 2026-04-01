@@ -31,6 +31,7 @@ type Client struct {
 // ConnectStdio starts the given command and connects to the MCP server over stdin/stdout.
 func ConnectStdio(ctx context.Context, key string, command string, args []string, env map[string]string) (*Client, error) {
 	cmd := exec.CommandContext(ctx, command, args...)
+	configureMCPCommand(cmd)
 	// 加载系统环境变量
 	osEnv := os.Environ()
 	envMap := make(map[string]string)

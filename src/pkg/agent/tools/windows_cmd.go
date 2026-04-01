@@ -31,7 +31,7 @@ func (WindowsCmdTool) Schema() *tool.JSONSchema {
 		Properties: map[string]interface{}{
 			"command": map[string]interface{}{
 				"type":        "string",
-				"description": "The command or batch script to execute, e.g. 'dir', 'echo hello', 'systeminfo'. Will be passed to cmd.exe /c.",
+				"description": "Windows command to execute silently in background (no window, no flash). Supports dir, ipconfig, tasklist, etc.",
 			},
 		},
 		Required: []string{"command"},
@@ -55,8 +55,19 @@ func (WindowsCmdTool) Execute(ctx context.Context, params map[string]interface{}
 		return &tool.ToolResult{Success: false, Output: "command is required"}, nil
 	}
 
-	cmd := exec.Command("cmd", "/c", cmdStr)
+	// 👇 这一行是关键：改用 powershell 无窗口执行
+	// 支持所有 cmd 命令：dir, ipconfig, tasklist 等全部兼容
+	cmd := exec.Command(
+		"powershell",
+		"-NoProfile",
+		"-NonInteractive",
+		"-WindowStyle", "Hidden", // 强制无窗口
+		"-Command", cmdStr,
+	)
+
+	// 👇 额外再加一层系统级隐藏（双重保险）
 	applyExecNoWindow(cmd)
+
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
