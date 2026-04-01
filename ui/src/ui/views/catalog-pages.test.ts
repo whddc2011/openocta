@@ -1,5 +1,5 @@
 import { render } from "lit";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   EduCategory,
   EmployeeDetail,
@@ -8,6 +8,10 @@ import type {
   McpListItem,
   SkillListItem,
 } from "../controllers/remote-market.ts";
+const nativeConfirmMock = vi.hoisted(() => vi.fn());
+vi.mock("../native-dialog-bridge.ts", () => ({
+  nativeConfirm: nativeConfirmMock,
+}));
 import {
   computeEmployeeMarketCategories,
   renderEmployeeMarket,
@@ -166,6 +170,11 @@ function tutorialProps(overrides: Partial<TutorialsProps> = {}): TutorialsProps 
 }
 
 describe("catalog pages", () => {
+  beforeEach(() => {
+    nativeConfirmMock.mockReset();
+    document.documentElement.lang = "zh";
+  });
+
   it("filters employee cards and category counts by search", () => {
     const counts = computeEmployeeMarketCategories(employeeItems(), "zabbix");
     expect(counts.counts.get("__all__")).toBe(1);
@@ -252,6 +261,47 @@ describe("catalog pages", () => {
     expect(onOpenEmployee).toHaveBeenCalledWith("test");
   });
 
+  it("confirms employee deletion in both card and detail actions", async () => {
+    nativeConfirmMock.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    const container = document.createElement("div");
+    const onDelete = vi.fn();
+    const detail: EmployeeDetail = {
+      id: "local:test",
+      name: "Prometheus专家",
+      description: "监控专家",
+      category: "安全合规",
+      tags: "monitor,ops",
+      readme: "# Employee",
+    };
+
+    renderIntoContainer(
+      renderEmployeeMarket(
+        employeeProps({
+          items: [{ id: "local:test", name: "Prometheus专家", description: "监控专家", category: "安全合规" }],
+          selectedDetail: detail,
+          installedRemoteIds: new Set(["local:test"]),
+          onDelete: async (id) => {
+            onDelete(id);
+          },
+        }),
+      ),
+      container,
+    );
+
+    const deleteButtons = Array.from(container.querySelectorAll("button")).filter(
+      (button) => button.textContent?.trim() === "删除",
+    );
+    deleteButtons[0]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await Promise.resolve();
+    deleteButtons[1]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await Promise.resolve();
+
+    expect(nativeConfirmMock).toHaveBeenNthCalledWith(1, "确定删除此数字员工？");
+    expect(nativeConfirmMock).toHaveBeenNthCalledWith(2, "确定删除此数字员工？");
+    expect(onDelete).toHaveBeenCalledTimes(1);
+    expect(onDelete).toHaveBeenCalledWith("test");
+  });
+
   it("renders installed skill actions and grouped title", () => {
     const container = document.createElement("div");
     renderIntoContainer(
@@ -279,6 +329,41 @@ describe("catalog pages", () => {
 
     const counts = computeSkillLibraryCategories(skillItems(), "ali", "__all__");
     expect(counts.counts.get("__all__")).toBe(1);
+  });
+
+  it("confirms skill deletion in card and detail actions", async () => {
+    nativeConfirmMock.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    const container = document.createElement("div");
+    const onDelete = vi.fn();
+    renderIntoContainer(
+      renderSkillLibrary(
+        skillProps({
+          installedKeys: new Set(["alicloud-ops"]),
+          selectedFolder: "alicloud-ops",
+          selectedDetail: {
+            folder: "alicloud-ops",
+            content: "# Skill",
+          },
+          onDelete: async (folder) => {
+            onDelete(folder);
+          },
+        }),
+      ),
+      container,
+    );
+
+    const deleteButtons = Array.from(container.querySelectorAll("button")).filter(
+      (button) => button.textContent?.trim() === "删除",
+    );
+    deleteButtons[0]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await Promise.resolve();
+    deleteButtons[1]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await Promise.resolve();
+
+    expect(nativeConfirmMock).toHaveBeenNthCalledWith(1, "确定删除此技能？");
+    expect(nativeConfirmMock).toHaveBeenNthCalledWith(2, "确定删除此技能？");
+    expect(onDelete).toHaveBeenCalledTimes(1);
+    expect(onDelete).toHaveBeenCalledWith("alicloud-ops");
   });
 
   it("searches installed skills as well", () => {
@@ -378,6 +463,48 @@ describe("catalog pages", () => {
 
     const counts = computeToolLibraryCategories(toolItems(), "prom");
     expect(counts.counts.get("__all__")).toBe(1);
+  });
+
+  it("confirms tool deletion in card and detail actions", async () => {
+    nativeConfirmMock.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    const detail: McpDetail = {
+      id: 1,
+      name: "Alicloud-mcp",
+      description: "阿里云工具",
+      category: "架构与开发",
+      tags: "cloud,deploy",
+      status: "open",
+      readme: "# Tool",
+    };
+    const container = document.createElement("div");
+    const onDelete = vi.fn();
+    renderIntoContainer(
+      renderToolLibrary(
+        toolProps({
+          installedRemoteIds: new Set(["1"]),
+          installedMcpMap: new Map([[1, "alicloud-mcp"]]),
+          selectedId: 1,
+          selectedDetail: detail,
+          onDelete: async (serverKey) => {
+            onDelete(serverKey);
+          },
+        }),
+      ),
+      container,
+    );
+
+    const deleteButtons = Array.from(container.querySelectorAll("button")).filter(
+      (button) => button.textContent?.trim() === "删除",
+    );
+    deleteButtons[0]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await Promise.resolve();
+    deleteButtons[1]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await Promise.resolve();
+
+    expect(nativeConfirmMock).toHaveBeenNthCalledWith(1, "确定删除此 MCP 服务器？");
+    expect(nativeConfirmMock).toHaveBeenNthCalledWith(2, "确定删除此 MCP 服务器？");
+    expect(onDelete).toHaveBeenCalledTimes(1);
+    expect(onDelete).toHaveBeenCalledWith("alicloud-mcp");
   });
 
   it("searches installed tools as well", () => {

@@ -134,6 +134,9 @@ type Strings = {
   commonNA: string;
   commonYes: string;
   commonNo: string;
+  chatQueueRemoveConfirm: string;
+  cronDeleteConfirm: string;
+  employeeDeleteConfirm: string;
   // Channels
   channelsConfigure: string;
   mcpAddServer: string;
@@ -1100,6 +1103,9 @@ const EN: Strings = {
   commonNA: "n/a",
   commonYes: "Yes",
   commonNo: "No",
+  chatQueueRemoveConfirm: "Remove this queued message?",
+  cronDeleteConfirm: "Delete this scheduled task?",
+  employeeDeleteConfirm: "Delete this digital employee?",
   channelsConfigure: "Configure",
   mcpAddServer: "Add MCP Server",
   mcpServerName: "Server name",
@@ -2080,6 +2086,9 @@ const ZH: Strings = {
   commonNA: "无",
   commonYes: "是",
   commonNo: "否",
+  chatQueueRemoveConfirm: "确定移除此排队消息？",
+  cronDeleteConfirm: "确定删除此定时任务？",
+  employeeDeleteConfirm: "确定删除此数字员工？",
   channelsConfigure: "配置",
   mcpAddServer: "新增",
   mcpServerName: "服务器名称",

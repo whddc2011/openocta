@@ -12,6 +12,8 @@ import {
 import { CHAT_HISTORY_LIMIT } from "../controllers/chat.ts";
 import { normalizeMessage, normalizeRoleForGrouping } from "../chat/message-normalizer.ts";
 import { icons } from "../icons.ts";
+import { nativeConfirm } from "../native-dialog-bridge.ts";
+import { t } from "../strings.js";
 import { renderMarkdownSidebar } from "./markdown-sidebar.ts";
 import "../components/resizable-divider.ts";
 
@@ -71,6 +73,7 @@ export type ChatProps = {
   onSend: () => void;
   onAbort?: () => void;
   onQueueRemove: (id: string) => void;
+  confirmQueueRemove?: boolean;
   onNewSession: () => void;
   onOpenSidebar?: (content: string) => void;
   onCloseSidebar?: () => void;
@@ -480,7 +483,15 @@ export function renderChat(props: ChatProps) {
                         class="btn chat-queue__remove"
                         type="button"
                         aria-label="Remove queued message"
-                        @click=${() => props.onQueueRemove(item.id)}
+                        @click=${async () => {
+                          if (
+                            props.confirmQueueRemove &&
+                            !(await nativeConfirm(t("chatQueueRemoveConfirm")))
+                          ) {
+                            return;
+                          }
+                          props.onQueueRemove(item.id);
+                        }}
                       >
                         ${icons.x}
                       </button>

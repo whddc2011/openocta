@@ -1,6 +1,10 @@
 import { render } from "lit";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SessionsListResult } from "../types.ts";
+const nativeConfirmMock = vi.hoisted(() => vi.fn());
+vi.mock("../native-dialog-bridge.ts", () => ({
+  nativeConfirm: nativeConfirmMock,
+}));
 import { renderChat, type ChatProps } from "./chat.ts";
 
 function createSessions(): SessionsListResult {
@@ -43,12 +47,70 @@ function createProps(overrides: Partial<ChatProps> = {}): ChatProps {
     onDraftChange: () => undefined,
     onSend: () => undefined,
     onQueueRemove: () => undefined,
+    confirmQueueRemove: false,
     onNewSession: () => undefined,
     ...overrides,
   };
 }
 
 describe("chat view", () => {
+  beforeEach(() => {
+    nativeConfirmMock.mockReset();
+    document.documentElement.lang = "en";
+  });
+
+  it("confirms queued message removal on the message page", async () => {
+    nativeConfirmMock.mockResolvedValueOnce(true);
+    const container = document.createElement("div");
+    const onQueueRemove = vi.fn();
+    render(
+      renderChat(
+        createProps({
+          queue: [{ id: "q-1", text: "queued", attachments: [] }],
+          onQueueRemove,
+          confirmQueueRemove: true,
+        }),
+      ),
+      container,
+    );
+
+    const removeButton = container.querySelector<HTMLButtonElement>(".chat-queue__remove");
+    removeButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await Promise.resolve();
+
+    expect(nativeConfirmMock).toHaveBeenCalledWith("Remove this queued message?");
+    expect(onQueueRemove).toHaveBeenCalledWith("q-1");
+  });
+
+  it("keeps attachment removal direct without a confirmation prompt", () => {
+    const container = document.createElement("div");
+    const onAttachmentsChange = vi.fn();
+    render(
+      renderChat(
+        createProps({
+          attachments: [
+            {
+              id: "att-1",
+              dataUrl: "data:image/png;base64,abc",
+              mimeType: "image/png",
+              filename: "demo.png",
+              sizeBytes: 12,
+              kind: "image",
+            },
+          ],
+          onAttachmentsChange,
+        }),
+      ),
+      container,
+    );
+
+    const removeButton = container.querySelector<HTMLButtonElement>(".chat-attachment__remove");
+    removeButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+    expect(nativeConfirmMock).not.toHaveBeenCalled();
+    expect(onAttachmentsChange).toHaveBeenCalledWith([]);
+  });
+
   it("uses chat-empty on the section when the thread is empty", () => {
     const container = document.createElement("div");
     render(renderChat(createProps()), container);

@@ -4,6 +4,7 @@ import type { McpDetail, McpListItem } from "../controllers/remote-market.ts";
 import { icons } from "../icons.js";
 import { resolveLogoUrl } from "../controllers/remote-market.ts";
 import { toSanitizedMarkdownHtml } from "../markdown.ts";
+import { nativeConfirm } from "../native-dialog-bridge.ts";
 import { t } from "../strings.js";
 import {
   isMcpAddFormValid,
@@ -150,7 +151,21 @@ function renderToolCardActions(
     return html`
       <div class="market-card-actions">
         ${props.onDelete
-          ? html`<button class="btn small" type="button" @click=${(e: Event) => { e.stopPropagation(); void props.onDelete!(serverKey); }}>删除</button>`
+          ? html`
+              <button
+                class="btn small"
+                type="button"
+                @click=${async (e: Event) => {
+                  e.stopPropagation();
+                  if (!(await nativeConfirm(t("mcpDeleteConfirm")))) {
+                    return;
+                  }
+                  void props.onDelete!(serverKey);
+                }}
+              >
+                删除
+              </button>
+            `
           : nothing}
         ${props.onToggleEnabled
           ? html`<button class="btn small" type="button" @click=${(e: Event) => { e.stopPropagation(); void props.onToggleEnabled!(serverKey, !enabled); }}>${enabled ? "禁用" : "启用"}</button>`

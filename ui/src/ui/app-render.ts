@@ -1522,6 +1522,7 @@ export function renderApp(state: AppViewState) {
                 onToggle: (job, enabled) => toggleCronJob(state, job, enabled),
                 onRun: (job) => runCronJob(state, job),
                 onRemove: (job) => removeCronJob(state, job),
+                confirmRemove: state.tab === "scheduledTasks",
                 onLoadRuns: (jobId) => loadCronRuns(state, jobId),
                 onShowHistory: (jobId) => {
                   state.setTab("cronHistory");
@@ -1554,6 +1555,7 @@ export function renderApp(state: AppViewState) {
                 onToggle: (job, enabled) => toggleCronJob(state, job, enabled),
                 onRun: (job) => runCronJob(state, job),
                 onRemove: (job) => removeCronJob(state, job),
+                confirmRemove: true,
                 onLoadRuns: (jobId) => loadCronRuns(state, jobId),
                 onShowHistory: (jobId) => {
                   state.setTab("cronHistory");
@@ -2699,6 +2701,7 @@ export function renderApp(state: AppViewState) {
                 canAbort: Boolean(state.chatRunId),
                 onAbort: () => void state.handleAbortChat(),
                 onQueueRemove: (id) => state.removeQueuedMessage(id),
+                confirmQueueRemove: state.tab === "message",
                 onNewSession: () => state.handleSendChat("/new", { restoreDraft: true }),
                 showNewMessages: state.chatNewMessagesBelow,
                 onScrollToBottom: () => state.scrollToBottom(),

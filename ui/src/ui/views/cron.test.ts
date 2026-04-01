@@ -1,7 +1,11 @@
 import { render } from "lit";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CronJob } from "../types.ts";
 import { DEFAULT_CRON_FORM } from "../app-defaults.ts";
+const nativeConfirmMock = vi.hoisted(() => vi.fn());
+vi.mock("../native-dialog-bridge.ts", () => ({
+  nativeConfirm: nativeConfirmMock,
+}));
 import { renderCronConfig, renderCronHistory, type CronProps } from "./cron.ts";
 
 function createJob(id: string): CronJob {
@@ -40,12 +44,67 @@ function createProps(overrides: Partial<CronProps> = {}): CronProps {
     onToggle: () => undefined,
     onRun: () => undefined,
     onRemove: () => undefined,
+    confirmRemove: false,
     onLoadRuns: () => undefined,
     ...overrides,
   };
 }
 
 describe("cron view", () => {
+  beforeEach(() => {
+    nativeConfirmMock.mockReset();
+    document.documentElement.lang = "en";
+  });
+
+  it("confirms removal before deleting in scheduled task views", async () => {
+    nativeConfirmMock.mockResolvedValueOnce(true);
+    const container = document.createElement("div");
+    const onRemove = vi.fn();
+    render(
+      renderCronConfig(
+        createProps({
+          jobs: [createJob("job-1")],
+          confirmRemove: true,
+          onRemove,
+        }),
+      ),
+      container,
+    );
+
+    const removeButton = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent?.trim() === "Remove",
+    );
+    removeButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await Promise.resolve();
+
+    expect(nativeConfirmMock).toHaveBeenCalledWith("Delete this scheduled task?");
+    expect(onRemove).toHaveBeenCalledWith(expect.objectContaining({ id: "job-1" }));
+  });
+
+  it("skips removal when scheduled task confirmation is cancelled", async () => {
+    nativeConfirmMock.mockResolvedValueOnce(false);
+    const container = document.createElement("div");
+    const onRemove = vi.fn();
+    render(
+      renderCronHistory(
+        createProps({
+          jobs: [createJob("job-1")],
+          confirmRemove: true,
+          onRemove,
+        }),
+      ),
+      container,
+    );
+
+    const removeButton = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent?.trim() === "Remove",
+    );
+    removeButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await Promise.resolve();
+
+    expect(onRemove).not.toHaveBeenCalled();
+  });
+
   it("renders add-job form inside a modal when opened", () => {
     const container = document.createElement("div");
     render(renderCronConfig(createProps({ addModalOpen: true })), container);

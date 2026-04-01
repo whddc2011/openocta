@@ -2,6 +2,7 @@ import { html, nothing } from "lit";
 import type { ChannelUiMetaEntry, CronJob, CronRunLogEntry, CronStatus } from "../types.ts";
 import type { CronFormState } from "../ui-types.ts";
 import { formatAgo, formatMs } from "../format.ts";
+import { nativeConfirm } from "../native-dialog-bridge.ts";
 import { pathForTab } from "../navigation.ts";
 import {
   formatCronSchedule,
@@ -31,6 +32,7 @@ export type CronProps = {
   onToggle: (job: CronJob, enabled: boolean) => void;
   onRun: (job: CronJob) => void;
   onRemove: (job: CronJob) => void;
+  confirmRemove?: boolean;
   onLoadRuns: (jobId: string) => void;
   onShowHistory?: (jobId: string) => void;
 };
@@ -527,8 +529,11 @@ function renderJob(
           <button
             class="btn"
             ?disabled=${props.busy}
-            @click=${(event: Event) => {
+            @click=${async (event: Event) => {
               event.stopPropagation();
+              if (props.confirmRemove && !(await nativeConfirm(t("cronDeleteConfirm")))) {
+                return;
+              }
               props.onRemove(job);
             }}
           >

@@ -175,7 +175,7 @@ export async function deleteSession(state: SessionsState, key: string) {
     return;
   }
   const confirmed = await nativeConfirm(
-    `Delete session "${key}"?\n\nDeletes the session entry and archives its transcript.`,
+    '确定删除此会话？',
   );
   if (!confirmed) {
     return;
@@ -208,10 +208,10 @@ export async function deleteSessions(state: SessionsState, keys: string[]) {
   }
   const label =
     safeKeys.length === 1
-      ? `Delete session "${safeKeys[0]}"?`
-      : `Delete ${safeKeys.length} sessions?\n\nFirst: "${safeKeys[0]}"`;
+      ? '确定删除此会话？'
+      : `确定删除 ${safeKeys.length} 个会话？`;
   const confirmed = await nativeConfirm(
-    `${label}\n\nDeletes the session entries and archives their transcripts.`,
+    `${label}`,
   );
   if (!confirmed) {
     return;

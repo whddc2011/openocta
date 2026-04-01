@@ -2,6 +2,8 @@ import { html, nothing } from "lit";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import type { EmployeeDetail, EmployeeListItem } from "../controllers/remote-market.ts";
 import { icons } from "../icons.js";
+import { nativeConfirm } from "../native-dialog-bridge.ts";
+import { t } from "../strings.js";
 import { resolveLogoUrl } from "../controllers/remote-market.ts";
 import { toSanitizedMarkdownHtml } from "../markdown.ts";
 
@@ -156,8 +158,11 @@ function renderEmployeeCardAction(
               <button
                 class="btn small"
                 type="button"
-                @click=${(e: Event) => {
+                @click=${async (e: Event) => {
                   e.stopPropagation();
+                  if (!(await nativeConfirm(t("employeeDeleteConfirm")))) {
+                    return;
+                  }
                   void props.onDelete!(localId);
                 }}
               >
@@ -232,7 +237,20 @@ function renderEmployeeDetailActions(props: EmployeeMarketProps, detail: Employe
     return html`
       <div class="market-card-actions">
         ${props.onDelete && localId
-          ? html`<button class="btn small" type="button" @click=${() => void props.onDelete!(localId)}>删除</button>`
+          ? html`
+              <button
+                class="btn small"
+                type="button"
+                @click=${async () => {
+                  if (!(await nativeConfirm(t("employeeDeleteConfirm")))) {
+                    return;
+                  }
+                  void props.onDelete!(localId);
+                }}
+              >
+                删除
+              </button>
+            `
           : nothing}
         ${props.onOpenEmployee && localId
           ? html`<button class="btn small" type="button" @click=${() => props.onOpenEmployee!(localId)}>会话</button>`

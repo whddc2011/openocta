@@ -3,6 +3,7 @@ import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { icons } from "../icons.js";
 import { resolveLogoUrl, type SkillDetail, type SkillListItem } from "../controllers/remote-market.ts";
 import { toSanitizedMarkdownHtml } from "../markdown.ts";
+import { nativeConfirm } from "../native-dialog-bridge.ts";
 import { t } from "../strings.js";
 
 /** Skills default icon (layers) - same as skills.ts */
@@ -163,7 +164,21 @@ function renderSkillCardActions(
     return html`
       <div class="market-card-actions">
         ${props.onDelete
-          ? html`<button class="btn small" type="button" @click=${(e: Event) => { e.stopPropagation(); void props.onDelete!(folder); }}>删除</button>`
+          ? html`
+              <button
+                class="btn small"
+                type="button"
+                @click=${async (e: Event) => {
+                  e.stopPropagation();
+                  if (!(await nativeConfirm(t("skillsDeleteConfirm")))) {
+                    return;
+                  }
+                  void props.onDelete!(folder);
+                }}
+              >
+                删除
+              </button>
+            `
           : nothing}
         ${props.onToggleEnabled
           ? html`<button class="btn small" type="button" @click=${(e: Event) => { e.stopPropagation(); void props.onToggleEnabled!(folder, !enabled); }}>${enabled ? "禁用" : "启用"}</button>`
