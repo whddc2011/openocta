@@ -1184,7 +1184,7 @@ export function renderApp(state: AppViewState) {
                   state.sessionsIncludeGlobal = next.includeGlobal;
                   state.sessionsIncludeUnknown = next.includeUnknown;
                 },
-                onRefresh: () => loadSessions(state),
+                onRefresh: () => loadSessions(state, { includeLastMessage: true }),
                 onPatch: (key, patch) => patchSession(state, key, patch),
                 onDelete: (key) => deleteSession(state, key),
                 onBulkModeToggle: () => {

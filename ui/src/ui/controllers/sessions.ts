@@ -77,7 +77,7 @@ export async function createSession(
     }
     const res = await state.client.request<SessionsCreateResult>("sessions.create", params);
     if (res?.ok && res.key) {
-      await loadSessions(state);
+      await loadSessions(state, { includeLastMessage: true });
       return res;
     }
     return null;
@@ -185,7 +185,7 @@ export async function deleteSession(state: SessionsState, key: string) {
   try {
     await state.client.request("sessions.delete", { key, deleteTranscript: true });
     state.sessionsLoading = false;
-    await loadSessions(state);
+    await loadSessions(state, { includeLastMessage: true });
   } catch (err) {
     state.sessionsError = String(err);
   } finally {
@@ -223,7 +223,7 @@ export async function deleteSessions(state: SessionsState, keys: string[]) {
       await state.client.request("sessions.delete", { key, deleteTranscript: true });
     }
     state.sessionsLoading = false;
-    await loadSessions(state);
+    await loadSessions(state, { includeLastMessage: true });
   } catch (err) {
     state.sessionsError = String(err);
   } finally {

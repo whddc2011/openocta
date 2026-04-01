@@ -191,7 +191,7 @@ export async function refreshActiveTab(host: SettingsHost) {
     await loadPresence(host as unknown as OpenClawApp);
   }
   if (host.tab === "sessions") {
-    await loadSessions(host as unknown as OpenClawApp);
+    await loadSessions(host as unknown as OpenClawApp, { includeLastMessage: true });
   }
   if (host.tab === "cron") {
     await loadCron(host);
@@ -464,7 +464,7 @@ export async function loadOverview(host: SettingsHost) {
   await Promise.all([
     loadChannels(host as unknown as OpenClawApp, false),
     loadPresence(host as unknown as OpenClawApp),
-    loadSessions(host as unknown as OpenClawApp),
+    loadSessions(host as unknown as OpenClawApp, { includeLastMessage: true }),
     loadCronStatus(host as unknown as OpenClawApp),
     loadDebug(host as unknown as OpenClawApp),
   ]);
