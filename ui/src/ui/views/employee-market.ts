@@ -143,63 +143,8 @@ function renderEmployeeCardAction(
   const installed = isInstalledEmployee(props, item);
   const remoteId = String(item.id);
   const installing = props.installingId === remoteId;
-  const localId = localEmployeeId(props, item);
   if (installed) {
-    const hasQuickActions = Boolean(
-      (props.onOpenEmployee && localId) || (props.onEdit && localId) || (props.onDelete && localId),
-    );
-    if (!hasQuickActions) {
-      return html`<button class="btn small" type="button" disabled>已安装</button>`;
-    }
-    return html`
-      <div class="market-card-actions">
-        ${props.onDelete && localId
-          ? html`
-              <button
-                class="btn small"
-                type="button"
-                @click=${async (e: Event) => {
-                  e.stopPropagation();
-                  if (!(await nativeConfirm(t("employeeDeleteConfirm")))) {
-                    return;
-                  }
-                  void props.onDelete!(localId);
-                }}
-              >
-                删除
-              </button>
-            `
-          : nothing}
-        ${props.onOpenEmployee && localId
-          ? html`
-              <button
-                class="btn small"
-                type="button"
-                @click=${(e: Event) => {
-                  e.stopPropagation();
-                  props.onOpenEmployee!(localId);
-                }}
-              >
-                会话
-              </button>
-            `
-          : nothing}
-        ${props.onEdit && localId
-          ? html`
-              <button
-                class="btn primary small"
-                type="button"
-                @click=${(e: Event) => {
-                  e.stopPropagation();
-                  props.onEdit!(localId);
-                }}
-              >
-                编辑
-              </button>
-            `
-          : nothing}
-      </div>
-    `;
+    return nothing;
   }
   if (props.onInstall) {
     return html`

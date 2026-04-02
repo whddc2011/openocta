@@ -161,6 +161,66 @@ function renderSkillCardActions(
   category?: string
 ) {
   if (installed) {
+    return props.onToggleEnabled
+      ? html`
+          <div class="market-card-actions">
+            <div
+              class=${`switch${enabled ? " is-checked" : ""}`}
+              @click=${(e: Event) => {
+                e.stopPropagation();
+                void props.onToggleEnabled!(folder, !enabled);
+              }}
+            >
+              <input
+                type="checkbox"
+                class="switch__input"
+                ?checked=${enabled}
+                aria-label=${enabled ? "禁用" : "启用"}
+              />
+              <span class="switch__core"></span>
+            </div>
+          </div>
+        `
+      : nothing;
+  }
+  if (props.onInstall) {
+    return html`
+      <button
+        class="btn small"
+        type="button"
+        ?disabled=${installing}
+        @click=${(e: Event) => {
+          e.stopPropagation();
+          void props.onInstall!(folder, category);
+        }}
+      >
+        ${installing ? "安装中" : "安装"}
+      </button>
+    `;
+  }
+  return html`
+    <a
+      class="btn small"
+      href=${`/api/v1/skills/${encodeURIComponent(folder)}/download`}
+      target="_blank"
+      rel="noopener"
+      title="下载"
+      @click=${(e: Event) => e.stopPropagation()}
+    >
+      安装
+    </a>
+  `;
+}
+
+function renderSkillDetailActions(
+  props: SkillLibraryProps,
+  folder: string,
+  installed: boolean,
+  enabled: boolean,
+  installing: boolean,
+  category?: string
+) {
+  if (installed) {
     return html`
       <div class="market-card-actions">
         ${props.onDelete
@@ -181,7 +241,18 @@ function renderSkillCardActions(
             `
           : nothing}
         ${props.onToggleEnabled
-          ? html`<button class="btn small" type="button" @click=${(e: Event) => { e.stopPropagation(); void props.onToggleEnabled!(folder, !enabled); }}>${enabled ? "禁用" : "启用"}</button>`
+          ? html`
+              <button
+                class="btn small"
+                type="button"
+                @click=${(e: Event) => {
+                  e.stopPropagation();
+                  void props.onToggleEnabled!(folder, !enabled);
+                }}
+              >
+                ${enabled ? "禁用" : "启用"}
+              </button>
+            `
           : nothing}
       </div>
     `;
@@ -319,7 +390,7 @@ export function renderSkillLibrary(props: SkillLibraryProps) {
                               const os = splitCsv(it.os);
                               const status = statusLabel(it.status);
                               return html`
-                                <div class="emp-card-wrap ${active ? "active" : ""}">
+                                <div class="emp-card-wrap ${active ? "active" : ""} ${disabled ? "is-disabled" : ""}">
                                   <div class="emp-card emp-card-btn" @click=${() => props.onSelect(it.folder)}>
                                     ${renderSkillCardIcon(props.gatewayHost, it.logo_url, it.emoji)}
                                     <div class="emp-card__actions">
@@ -359,7 +430,7 @@ export function renderSkillLibrary(props: SkillLibraryProps) {
                                       const os = splitCsv(it.os);
                                       const status = statusLabel(it.status);
                                       return html`
-                                        <div class="emp-card-wrap ${active ? "active" : ""}">
+                                        <div class="emp-card-wrap ${active ? "active" : ""} ${disabled ? "is-disabled" : ""}">
                                           <div class="emp-card emp-card-btn" @click=${() => props.onSelect(it.folder)}>
                                             ${renderSkillCardIcon(props.gatewayHost, it.logo_url, it.emoji)}
                                             <div class="emp-card__actions">
@@ -518,10 +589,10 @@ export function renderSkillLibrary(props: SkillLibraryProps) {
                           const disabled = props.disabledKeys?.has(folder) ?? false;
                           const enabled = !disabled;
                           if (installed) {
-                            return renderSkillCardActions(props, folder, true, enabled, false);
+                            return renderSkillDetailActions(props, folder, true, enabled, false);
                           }
                           if (props.onInstall) {
-                            return renderSkillCardActions(
+                            return renderSkillDetailActions(
                               props,
                               folder,
                               false,
@@ -529,7 +600,7 @@ export function renderSkillLibrary(props: SkillLibraryProps) {
                               props.installingFolder === folder,
                             );
                           }
-                          return renderSkillCardActions(props, folder, false, false, false);
+                          return renderSkillDetailActions(props, folder, false, false, false);
                         })()}
                       </div>
                     </div>

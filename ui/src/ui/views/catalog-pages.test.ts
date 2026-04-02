@@ -250,15 +250,11 @@ describe("catalog pages", () => {
 
     const firstCardActions = container.querySelector(".emp-card-wrap .emp-card__actions");
     const cardButtons = Array.from(firstCardActions?.querySelectorAll("button") ?? []);
-    const labels = cardButtons.map((button) => button.textContent?.trim());
-    expect(labels).toEqual(["删除", "会话", "编辑"]);
-    expect(cardButtons.find((button) => button.textContent?.trim() === "会话")?.className).toBe("btn small");
-    expect(cardButtons.find((button) => button.textContent?.trim() === "编辑")?.className).toBe("btn primary small");
-    expect(cardButtons.find((button) => button.textContent?.trim() === "删除")?.className).toBe("btn small");
-
-    const talkButton = cardButtons.find((button) => button.textContent?.trim() === "会话");
-    talkButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    expect(onOpenEmployee).toHaveBeenCalledWith("test");
+    expect(cardButtons).toHaveLength(0);
+    expect(firstCardActions?.textContent?.trim() ?? "").toBe("");
+    expect(onOpenEmployee).not.toHaveBeenCalled();
+    expect(onEdit).not.toHaveBeenCalled();
+    expect(onDelete).not.toHaveBeenCalled();
   });
 
   it("confirms employee deletion in both card and detail actions", async () => {
@@ -288,21 +284,16 @@ describe("catalog pages", () => {
       container,
     );
 
-    const deleteButtons = Array.from(container.querySelectorAll("button")).filter(
-      (button) => button.textContent?.trim() === "删除",
-    );
-    deleteButtons[0]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    await Promise.resolve();
-    deleteButtons[1]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    const deleteButton = container.querySelector<HTMLButtonElement>(".emp-detail-modal .market-card-actions button");
+    deleteButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     await Promise.resolve();
 
     expect(nativeConfirmMock).toHaveBeenNthCalledWith(1, "确定删除此数字员工？");
-    expect(nativeConfirmMock).toHaveBeenNthCalledWith(2, "确定删除此数字员工？");
     expect(onDelete).toHaveBeenCalledTimes(1);
     expect(onDelete).toHaveBeenCalledWith("test");
   });
 
-  it("renders installed skill actions and grouped title", () => {
+  it("renders installed skill switch actions and grouped title", () => {
     const container = document.createElement("div");
     renderIntoContainer(
       renderSkillLibrary(
@@ -316,23 +307,49 @@ describe("catalog pages", () => {
     );
 
     expect(container.textContent).toContain("运维自动化");
-    expect(container.textContent).toContain("删除");
-    expect(container.textContent).toContain("启用");
     expect(container.textContent).toContain("开放");
     expect(container.textContent).toContain("OS: linux");
     expect(container.textContent).toContain("eligible");
     expect(container.textContent).not.toContain("已禁用");
     expect(container.querySelector(".market-card-status")).toBeNull();
     const actionButtons = Array.from(container.querySelectorAll(".emp-card__actions button"));
-    expect(actionButtons.find((button) => button.textContent?.trim() === "删除")?.className).toBe("btn small");
-    expect(actionButtons.find((button) => button.textContent?.trim() === "启用")?.className).toBe("btn small");
+    expect(actionButtons.find((button) => button.textContent?.trim() === "删除")).toBeUndefined();
+    const switchEl = container.querySelector(".emp-card__actions .switch");
+    const switchInput = container.querySelector<HTMLInputElement>(".emp-card__actions .switch__input");
+    expect(switchEl?.classList.contains("is-checked")).toBe(false);
+    expect(switchInput?.checked).toBe(false);
+    expect(container.querySelector(".emp-card-wrap")?.classList.contains("is-disabled")).toBe(true);
 
     const counts = computeSkillLibraryCategories(skillItems(), "ali", "__all__");
     expect(counts.counts.get("__all__")).toBe(1);
   });
 
+  it("toggles installed skill cards with a switch", () => {
+    const container = document.createElement("div");
+    const onToggleEnabled = vi.fn();
+
+    renderIntoContainer(
+      renderSkillLibrary(
+        skillProps({
+          installedKeys: new Set(["alicloud-ops"]),
+          onToggleEnabled: async (folder, nextEnabled) => {
+            onToggleEnabled(folder, nextEnabled);
+          },
+        }),
+      ),
+      container,
+    );
+
+    const switchEl = container.querySelector<HTMLElement>(".emp-card__actions .switch");
+    expect(switchEl).not.toBeNull();
+    switchEl!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+    expect(onToggleEnabled).toHaveBeenCalledTimes(1);
+    expect(onToggleEnabled).toHaveBeenCalledWith("alicloud-ops", false);
+  });
+
   it("confirms skill deletion in card and detail actions", async () => {
-    nativeConfirmMock.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    nativeConfirmMock.mockResolvedValueOnce(true);
     const container = document.createElement("div");
     const onDelete = vi.fn();
     renderIntoContainer(
@@ -352,16 +369,11 @@ describe("catalog pages", () => {
       container,
     );
 
-    const deleteButtons = Array.from(container.querySelectorAll("button")).filter(
-      (button) => button.textContent?.trim() === "删除",
-    );
-    deleteButtons[0]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    await Promise.resolve();
-    deleteButtons[1]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    const deleteButton = container.querySelector<HTMLButtonElement>(".emp-detail-modal .market-card-actions button");
+    deleteButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     await Promise.resolve();
 
     expect(nativeConfirmMock).toHaveBeenNthCalledWith(1, "确定删除此技能？");
-    expect(nativeConfirmMock).toHaveBeenNthCalledWith(2, "确定删除此技能？");
     expect(onDelete).toHaveBeenCalledTimes(1);
     expect(onDelete).toHaveBeenCalledWith("alicloud-ops");
   });
@@ -421,7 +433,7 @@ describe("catalog pages", () => {
     expect(meta?.textContent).toContain("OS: linux");
   });
 
-  it("renders installed tool actions and detail modal", () => {
+  it("renders installed tool switch actions and detail modal", () => {
     const detail: McpDetail = {
       id: 1,
       name: "Alicloud-mcp",
@@ -444,9 +456,8 @@ describe("catalog pages", () => {
       container,
     );
 
-    expect(container.textContent).toContain("编辑");
-    expect(container.textContent).toContain("删除");
-    expect(container.textContent).toContain("禁用");
+    expect(container.querySelector(".emp-detail-modal")?.textContent).toContain("编辑");
+    expect(container.querySelector(".emp-detail-modal")?.textContent).toContain("禁用");
     expect(container.textContent).toContain("架构与开发");
     expect(container.textContent).toContain("开放");
     expect(container.textContent).toContain("cloud");
@@ -455,18 +466,64 @@ describe("catalog pages", () => {
     expect(container.textContent).not.toContain("已启用");
     expect(container.textContent).not.toContain("stdio");
     expect(container.querySelector(".market-card-status")).toBeNull();
-    const actionButtons = Array.from(container.querySelectorAll(".emp-card__actions button"));
-    expect(actionButtons.find((button) => button.textContent?.trim() === "删除")?.className).toBe("btn small");
-    expect(actionButtons.find((button) => button.textContent?.trim() === "禁用")?.className).toBe("btn small");
-    expect(actionButtons.find((button) => button.textContent?.trim() === "编辑")?.className).toBe("btn primary small");
+    const cardActionButtons = Array.from(
+      container.querySelectorAll(".emp-card-wrap .emp-card__actions button"),
+    );
+    expect(cardActionButtons.find((button) => button.textContent?.trim() === "删除")).toBeUndefined();
+    expect(cardActionButtons.find((button) => button.textContent?.trim() === "编辑")).toBeUndefined();
+    const switchEl = container.querySelector(".emp-card-wrap .emp-card__actions .switch");
+    const switchInput = container.querySelector<HTMLInputElement>(".emp-card-wrap .emp-card__actions .switch__input");
+    expect(switchEl?.classList.contains("is-checked")).toBe(true);
+    expect(switchInput?.checked).toBe(true);
     expect(container.querySelector(".emp-detail-modal")).not.toBeNull();
 
     const counts = computeToolLibraryCategories(toolItems(), "prom");
     expect(counts.counts.get("__all__")).toBe(1);
   });
 
+  it("marks disabled tool cards with the disabled state class", () => {
+    const container = document.createElement("div");
+    renderIntoContainer(
+      renderToolLibrary(
+        toolProps({
+          installedRemoteIds: new Set(["1"]),
+          installedMcpMap: new Map([[1, "alicloud-mcp"]]),
+          disabledMcpKeys: new Set(["alicloud-mcp"]),
+        }),
+      ),
+      container,
+    );
+
+    expect(container.querySelector(".emp-card-wrap")?.classList.contains("is-disabled")).toBe(true);
+  });
+
+  it("toggles installed tool cards with a switch", () => {
+    const container = document.createElement("div");
+    const onToggleEnabled = vi.fn();
+
+    renderIntoContainer(
+      renderToolLibrary(
+        toolProps({
+          installedRemoteIds: new Set(["1"]),
+          installedMcpMap: new Map([[1, "alicloud-mcp"]]),
+          onToggleEnabled: async (serverKey, nextEnabled) => {
+            onToggleEnabled(serverKey, nextEnabled);
+          },
+        }),
+      ),
+      container,
+    );
+
+    const switchEl = container.querySelector<HTMLElement>(".emp-card__actions .switch");
+    expect(switchEl).not.toBeNull();
+    switchEl!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+    expect(onToggleEnabled).toHaveBeenCalledTimes(1);
+    expect(onToggleEnabled).toHaveBeenCalledWith("alicloud-mcp", false);
+  });
+
   it("confirms tool deletion in card and detail actions", async () => {
-    nativeConfirmMock.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    nativeConfirmMock.mockResolvedValueOnce(true);
     const detail: McpDetail = {
       id: 1,
       name: "Alicloud-mcp",
@@ -493,16 +550,11 @@ describe("catalog pages", () => {
       container,
     );
 
-    const deleteButtons = Array.from(container.querySelectorAll("button")).filter(
-      (button) => button.textContent?.trim() === "删除",
-    );
-    deleteButtons[0]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    await Promise.resolve();
-    deleteButtons[1]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    const deleteButton = container.querySelector<HTMLButtonElement>(".emp-detail-modal .market-card-actions button");
+    deleteButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     await Promise.resolve();
 
     expect(nativeConfirmMock).toHaveBeenNthCalledWith(1, "确定删除此 MCP 服务器？");
-    expect(nativeConfirmMock).toHaveBeenNthCalledWith(2, "确定删除此 MCP 服务器？");
     expect(onDelete).toHaveBeenCalledTimes(1);
     expect(onDelete).toHaveBeenCalledWith("alicloud-mcp");
   });

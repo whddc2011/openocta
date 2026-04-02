@@ -1641,7 +1641,7 @@ button.nav-item {
   justify-content: space-between;
   align-items: center;
   gap: 20px;
-  padding: 0 18px;
+  padding: 0 20px;
   min-height: var(--shell-topbar-height);
   box-sizing: border-box;
 }
@@ -1803,7 +1803,7 @@ button.nav-item {
 
 .topbar-status .pill {
   height: 28px;
-  padding: 0 14px;
+  padding: 0 10px;
   border-radius: 999px;
   box-sizing: border-box;
   border: none;
@@ -1840,26 +1840,6 @@ button.nav-item {
 .topbar-link__img,
 .topbar-link__icon {
   opacity: 0.9;
-}
-
-@media (max-width: 1400px) {
-  /* .topbar-status .pill--version .topbar-status__label,
-  .topbar-status .pill--health .topbar-status__label,
-  .topbar-status .pill--link .topbar-link__label {
-    display: none;
-  }
-
-  .topbar-status .pill {
-    padding: 0 6px;
-  }
-
-  .topbar-status .pill--link .topbar-link {
-    gap: 0;
-  }
-
-  .topbar-status .pill--health {
-    gap: 6px;
-  } */
 }
 
 @media (max-width: 1200px) {

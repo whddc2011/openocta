@@ -34,6 +34,9 @@
 .emp-search {
   width: 200px;
   position: relative;
+  .input {
+    width: 100%;
+  }
 }
 
 .emp-search__icon {
@@ -225,7 +228,7 @@
 .content--catalog .emp-main__body {
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 40px;
   position: relative;
 }
 
@@ -284,6 +287,12 @@
 .content--catalog .emp-card-wrap:hover {
   border-color: var(--accent);
   box-shadow: 0px 2px 10px 10px rgba(36, 186, 81, 0.04);
+  .emp-card__actions {
+    display: flex;
+    top: 20px;
+    right: 20px;
+    gap: 8px;
+  }
 }
 
 .content--catalog .emp-card-btn {
@@ -293,10 +302,11 @@
 
 .content--catalog .emp-card__icon {
   margin-bottom: 16px;
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
 .content--catalog .emp-card__actions {
+  display: none;
   top: 20px;
   right: 20px;
   gap: 8px;
@@ -321,6 +331,7 @@
 }
 
 .market-card-actions {
+  min-height: 28px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -331,6 +342,13 @@
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+.emp-card-wrap.is-disabled .emp-card__icon,
+.emp-card-wrap.is-disabled .emp-card__title,
+.emp-card-wrap.is-disabled .emp-card__desc,
+.emp-card-wrap.is-disabled .market-card-meta {
+  opacity: 0.5;
 }
 
 .market-card-chip {
