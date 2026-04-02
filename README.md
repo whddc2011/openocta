@@ -10,6 +10,8 @@
 
 OpenOcta 参考 [OpenClaw](https://github.com/openocta/openocta) 的 设计思想，完全自己重构为 **单一 Go 二进制后端 + 内嵌前端**，面向运维、可观测与自动化场景。
 
+**热烈欢迎大家对该项目提交PR或者好的意见**
+
 ---
 
 ## 项目简介
