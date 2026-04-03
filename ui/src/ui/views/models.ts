@@ -7,6 +7,15 @@ import {
   type BuiltInProvider,
 } from "./models-builtin.ts";
 
+export type ModelDefinitionEntry = {
+  id: string;
+  name?: string;
+  /** Estimated token budget for conversation history (agentsdk trimmer). */
+  contextWindow?: number;
+  /** Max completion tokens per model request (provider MaxTokens). */
+  maxTokens?: number;
+};
+
 export type ModelProvider = {
   baseUrl?: string;
   apiKey?: string;
@@ -16,7 +25,7 @@ export type ModelProvider = {
   headers?: Record<string, string>;
   displayName?: string;
   envVars?: Record<string, string>;
-  models?: Array<{ id: string; name?: string }>;
+  models?: ModelDefinitionEntry[];
 };
 
 export type AddProviderForm = {
@@ -30,6 +39,9 @@ export type AddProviderForm = {
 export type AddModelForm = {
   modelId: string;
   modelName: string;
+  /** Optional; empty omits. Positive integers only. */
+  contextWindow: string;
+  maxTokens: string;
 };
 
 export type ModelsProps = {
@@ -64,6 +76,11 @@ export type ModelsProps = {
   onAddModelFormChange: (form: Partial<AddModelForm>) => void;
   onAddModelSubmit: (providerKey: string) => void;
   onRemoveModel: (providerKey: string, modelId: string) => void;
+  onPatchModel: (
+    providerKey: string,
+    modelId: string,
+    patch: Partial<{ contextWindow: number | null; maxTokens: number | null }>,
+  ) => void;
   onPatchModelEnv: (providerKey: string, modelId: string, envVars: Record<string, string>) => void;
   onSave: () => void;
   onCancel: () => void;
@@ -97,7 +114,7 @@ function providerMatchesSearch(
   return dn.includes(q);
 }
 
-function getModelsForProvider(providerKey: string, provider?: ModelProvider): Array<{ id: string; name?: string }> {
+function getModelsForProvider(providerKey: string, provider?: ModelProvider): ModelDefinitionEntry[] {
   const builtin = BUILTIN_PROVIDERS.find((p) => p.id === providerKey);
   const configured = provider?.models ?? [];
   if (configured.length > 0) return configured;
@@ -618,6 +635,30 @@ export function renderModels(props: ModelsProps) {
                         props.onAddModelFormChange({ modelName: (e.target as HTMLInputElement).value })}
                     /></span>
                   </div>
+                  <div class="field">
+                    <span>${t("modelsContextWindow")}</span>
+                    <span class="input"><input
+                      type="text"
+                      inputmode="numeric"
+                      .value=${props.addModelForm.contextWindow}
+                      placeholder=${t("modelsContextWindowPlaceholder")}
+                      @input=${(e: Event) =>
+                        props.onAddModelFormChange({ contextWindow: (e.target as HTMLInputElement).value })}
+                    /></span>
+                    <small class="muted" style="font-size: 11px;">${t("modelsContextWindowHint")}</small>
+                  </div>
+                  <div class="field">
+                    <span>${t("modelsMaxTokens")}</span>
+                    <span class="input"><input
+                      type="text"
+                      inputmode="numeric"
+                      .value=${props.addModelForm.maxTokens}
+                      placeholder=${t("modelsMaxTokensPlaceholder")}
+                      @input=${(e: Event) =>
+                        props.onAddModelFormChange({ maxTokens: (e.target as HTMLInputElement).value })}
+                    /></span>
+                    <small class="muted" style="font-size: 11px;">${t("modelsMaxTokensHint")}</small>
+                  </div>
                 </div>
                 <div class="row" style="margin-top: 16px; gap: 8px;">
                   <button class="btn" @click=${props.onAddModelModalClose}>${t("commonCancel")}</button>
@@ -751,6 +792,50 @@ export function renderModels(props: ModelsProps) {
                                     >
                                       ${t("commonDelete")}
                                     </button>
+                                  </div>
+                                  <div class="row" style="gap: 10px; margin-top: 8px; flex-wrap: wrap; align-items: flex-end;">
+                                    <div class="field" style="flex: 1; min-width: 120px; margin: 0;">
+                                      <span style="font-size: 11px;">${t("modelsContextWindow")}</span>
+                                      <span class="input"><input
+                                        type="text"
+                                        inputmode="numeric"
+                                        style="font-size: 12px; padding: 6px 8px;"
+                                        .value=${m.contextWindow != null ? String(m.contextWindow) : ""}
+                                        placeholder=${t("modelsContextWindowPlaceholder")}
+                                        @input=${(e: Event) => {
+                                          const raw = (e.target as HTMLInputElement).value.trim();
+                                          if (!raw) {
+                                            props.onPatchModel(props.selectedProvider!, m.id, { contextWindow: null });
+                                            return;
+                                          }
+                                          const n = Number(raw);
+                                          if (Number.isFinite(n) && n > 0 && Number.isInteger(n)) {
+                                            props.onPatchModel(props.selectedProvider!, m.id, { contextWindow: n });
+                                          }
+                                        }}
+                                      /></span>
+                                    </div>
+                                    <div class="field" style="flex: 1; min-width: 120px; margin: 0;">
+                                      <span style="font-size: 11px;">${t("modelsMaxTokens")}</span>
+                                      <span class="input"><input
+                                        type="text"
+                                        inputmode="numeric"
+                                        style="font-size: 12px; padding: 6px 8px;"
+                                        .value=${m.maxTokens != null ? String(m.maxTokens) : ""}
+                                        placeholder=${t("modelsMaxTokensPlaceholder")}
+                                        @input=${(e: Event) => {
+                                          const raw = (e.target as HTMLInputElement).value.trim();
+                                          if (!raw) {
+                                            props.onPatchModel(props.selectedProvider!, m.id, { maxTokens: null });
+                                            return;
+                                          }
+                                          const n = Number(raw);
+                                          if (Number.isFinite(n) && n > 0 && Number.isInteger(n)) {
+                                            props.onPatchModel(props.selectedProvider!, m.id, { maxTokens: n });
+                                          }
+                                        }}
+                                      /></span>
+                                    </div>
                                   </div>
                                   <div style="margin-top: 6px; font-size: 12px;">
                                     <strong class="muted">${t("modelsEnvVars")}</strong>

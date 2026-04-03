@@ -260,15 +260,15 @@ func ApprovalsApproveHandler(opts HandlerOpts) error {
 		opts.Respond(false, nil, &protocol.ErrorShape{Code: protocol.ErrCodeInternal, Message: err.Error()}, nil)
 		return nil
 	}
-	// Approve without adding to whitelist (ttl=0)
-	// 判断是否为空
-	var ttl time.Duration
+	// Approve once: mark record approved with optional ExpiresAt for UI (same window as pending timeout).
+	// Does not add the session to the whitelist (that is approvals.whitelistSession only).
+	var recordTTL time.Duration
 	if opts.Context.Config.Security != nil && opts.Context.Config.Security.ApprovalQueue != nil && opts.Context.Config.Security.ApprovalQueue.TimeoutSeconds != nil {
-		ttl = time.Duration(int64(*opts.Context.Config.Security.ApprovalQueue.TimeoutSeconds)) * time.Second
+		recordTTL = time.Duration(int64(*opts.Context.Config.Security.ApprovalQueue.TimeoutSeconds)) * time.Second
 	} else {
-		ttl = time.Minute * 5
+		recordTTL = time.Minute * 5
 	}
-	if _, err := q.Approve(requestID, strings.TrimSpace(approverID), ttl); err != nil {
+	if _, err := q.Approve(requestID, strings.TrimSpace(approverID), recordTTL); err != nil {
 		opts.Respond(false, nil, &protocol.ErrorShape{
 			Code:    protocol.ErrCodeNotFound,
 			Message: err.Error(),

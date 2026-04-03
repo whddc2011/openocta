@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/url"
 	"os"
 	"os/exec"
@@ -23,6 +24,7 @@ type Manager struct {
 
 // NewManager creates a manager and connects to all enabled MCP servers from cfg.
 // If cfg or cfg.Mcp is nil, returns an empty manager (no tools).
+// A single server failing to connect is logged and skipped; other servers still start.
 func NewManager(ctx context.Context, cfg *config.OpenOctaConfig) (*Manager, error) {
 	m := &Manager{}
 	if cfg == nil || cfg.Mcp == nil || len(cfg.Mcp.Servers) == 0 {
@@ -36,7 +38,8 @@ func NewManager(ctx context.Context, cfg *config.OpenOctaConfig) (*Manager, erro
 		// Use background so MCP connections outlive the startup request.
 		client, err := connectEntry(context.Background(), key, &entry)
 		if err != nil {
-			return nil, fmt.Errorf("mcp server %q: %w", key, err)
+			log.Printf("mcp: connect failed for server %q, skipping: %v", key, err)
+			continue
 		}
 		if client != nil {
 			m.clients = append(m.clients, client)

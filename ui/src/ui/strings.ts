@@ -304,6 +304,14 @@ type Strings = {
   modelsAddModel: string;
   modelsModelId: string;
   modelsModelName: string;
+  /** History/context token budget (maps to config contextWindow). */
+  modelsContextWindow: string;
+  modelsContextWindowPlaceholder: string;
+  modelsContextWindowHint: string;
+  /** Max completion tokens per request (maps to config maxTokens). */
+  modelsMaxTokens: string;
+  modelsMaxTokensPlaceholder: string;
+  modelsMaxTokensHint: string;
   modelsModelManagement: string;
   modelsNoModels: string;
   modelsEnvVarConflict: string;
@@ -1291,6 +1299,12 @@ const EN: Strings = {
   modelsAddModel: "Add Model",
   modelsModelId: "Model ID",
   modelsModelName: "Model Name",
+  modelsContextWindow: "Context window (tokens)",
+  modelsContextWindowPlaceholder: "e.g. 262144",
+  modelsContextWindowHint: "Caps estimated tokens kept in conversation history. Leave empty for default (no trim).",
+  modelsMaxTokens: "Max output tokens",
+  modelsMaxTokensPlaceholder: "e.g. 65536",
+  modelsMaxTokensHint: "Max tokens per model completion. Leave empty to use the runtime default.",
   modelsModelManagement: "Model Management",
   modelsNoModels: "No models yet. Click Add Model to add one.",
   modelsEnvVarConflict: "Environment variable conflict",
@@ -2275,6 +2289,12 @@ const ZH: Strings = {
   modelsAddModel: "添加模型",
   modelsModelId: "模型 ID",
   modelsModelName: "模型名称",
+  modelsContextWindow: "上下文窗口（约 token 数）",
+  modelsContextWindowPlaceholder: "如 262144",
+  modelsContextWindowHint: "对话历史估算 token 上限，超出会丢弃较早消息。留空则使用默认（不按此项裁剪）。",
+  modelsMaxTokens: "单次回复最大 token",
+  modelsMaxTokensPlaceholder: "如 65536",
+  modelsMaxTokensHint: "单次模型输出的最大 token。留空则使用运行时默认值。",
   modelsModelManagement: "模型管理",
   modelsNoModels: "暂无模型，点击添加模型。",
   modelsEnvVarConflict: "环境变量冲突",

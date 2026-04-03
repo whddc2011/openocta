@@ -108,8 +108,10 @@ func (q *ApprovalQueue) Request(sessionID, command string, paths []string) (*App
 	return cloneRecord(record), nil
 }
 
-// Approve marks a pending record as approved and optionally whitelists the session.
-func (q *ApprovalQueue) Approve(id, approver string, whitelistTTL time.Duration) (*ApprovalRecord, error) {
+// Approve marks a pending record as approved.
+// If recordTTL > 0, sets ExpiresAt on this record (for UI / bookkeeping only).
+// Session whitelist is not modified; use AddSessionToWhitelist for that.
+func (q *ApprovalQueue) Approve(id, approver string, recordTTL time.Duration) (*ApprovalRecord, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	q.ensureCondLocked()
@@ -129,12 +131,10 @@ func (q *ApprovalQueue) Approve(id, approver string, whitelistTTL time.Duration)
 	rec.AutoApproved = false
 	rec.ApprovedAt = &now
 
-	if whitelistTTL > 0 {
-		expiry := now.Add(whitelistTTL)
-		q.whitelist[rec.SessionID] = expiry
+	if recordTTL > 0 {
+		expiry := now.Add(recordTTL)
 		rec.ExpiresAt = &expiry
 	} else {
-		delete(q.whitelist, rec.SessionID)
 		rec.ExpiresAt = nil
 	}
 

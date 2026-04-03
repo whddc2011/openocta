@@ -176,6 +176,12 @@ export async function abortChatRun(state: ChatState): Promise<boolean> {
   try {
     const sk = canonicalGatewaySessionKey(state.sessionKey);
     await state.client.request("chat.abort", runId ? { sessionKey: sk, runId } : { sessionKey: sk });
+    // 网关会推送 chat/aborted，但若事件稍晚到达，先清本地状态以免「停止」后仍显示进行中且无法再次发送
+    if (runId && state.chatRunId === runId) {
+      state.chatRunId = null;
+      state.chatStream = null;
+      state.chatStreamStartedAt = null;
+    }
     return true;
   } catch (err) {
     state.lastError = String(err);

@@ -2,7 +2,7 @@ import type { AppViewState } from "./app-view-state.ts";
 import { loadConfig } from "./controllers/config.ts";
 import { saveConfigPatch } from "./controllers/config.ts";
 import { cloneConfigObject, setPathValue } from "./controllers/config/form-utils.ts";
-import type { AddModelForm, AddProviderForm, ModelProvider } from "./views/models.ts";
+import type { AddModelForm, AddProviderForm, ModelDefinitionEntry, ModelProvider } from "./views/models.ts";
 import { BUILTIN_PROVIDERS } from "./views/models-builtin.ts";
 
 export function handleModelsRefresh(host: AppViewState) {
@@ -83,9 +83,17 @@ export function handleModelsPatch(host: AppViewState, key: string, patch: Partia
   host.modelsFormDirty = true;
 }
 
+function parseOptionalPositiveInt(s: string): number | undefined {
+  const t = s.trim();
+  if (!t) return undefined;
+  const n = Number(t);
+  if (!Number.isFinite(n) || n <= 0 || !Number.isInteger(n)) return undefined;
+  return n;
+}
+
 export function handleModelsAddModel(host: AppViewState, providerKey: string) {
   host.modelsAddModelModalOpen = true;
-  host.modelsAddModelForm = { modelId: "", modelName: "" };
+  host.modelsAddModelForm = { modelId: "", modelName: "", contextWindow: "", maxTokens: "" };
 }
 
 export function handleModelsAddModelModalClose(host: AppViewState) {
@@ -97,7 +105,7 @@ export function handleModelsAddModelFormChange(host: AppViewState, form: Partial
 }
 
 export function handleModelsAddModelSubmit(host: AppViewState, providerKey: string) {
-  const { modelId, modelName } = host.modelsAddModelForm;
+  const { modelId, modelName, contextWindow, maxTokens } = host.modelsAddModelForm;
   if (!modelId.trim() || !modelName.trim()) return;
   const base = cloneConfigObject(host.configForm ?? host.configSnapshot?.config ?? {});
   if (!base.models) {
@@ -113,14 +121,54 @@ export function handleModelsAddModelSubmit(host: AppViewState, providerKey: stri
     host.modelsAddModelModalOpen = false;
     return;
   }
+  const cw = parseOptionalPositiveInt(contextWindow);
+  const mt = parseOptionalPositiveInt(maxTokens);
+  const entry: ModelDefinitionEntry = { id: modelId.trim(), name: modelName.trim() };
+  if (cw !== undefined) entry.contextWindow = cw;
+  if (mt !== undefined) entry.maxTokens = mt;
   models.providers[providerKey] = {
     ...prov,
-    models: [...existing, { id: modelId.trim(), name: modelName.trim() }],
+    models: [...existing, entry],
   };
   host.configForm = base;
   host.configFormDirty = true;
   host.modelsFormDirty = true;
   host.modelsAddModelModalOpen = false;
+}
+
+export function handleModelsPatchModel(
+  host: AppViewState,
+  providerKey: string,
+  modelId: string,
+  patch: Partial<{ contextWindow: number | null; maxTokens: number | null }>,
+) {
+  const base = cloneConfigObject(host.configForm ?? host.configSnapshot?.config ?? {});
+  if (!base.models) {
+    base.models = { mode: "merge", providers: {} };
+  }
+  const models = base.models as { mode?: string; providers?: Record<string, ModelProvider> };
+  if (!models.providers) {
+    models.providers = {};
+  }
+  const prov = models.providers[providerKey];
+  if (!prov?.models?.length) return;
+  const nextModels = prov.models.map((m) => {
+    if (m.id !== modelId) return m;
+    const u = { ...m };
+    if ("contextWindow" in patch) {
+      if (patch.contextWindow == null) delete u.contextWindow;
+      else u.contextWindow = patch.contextWindow;
+    }
+    if ("maxTokens" in patch) {
+      if (patch.maxTokens == null) delete u.maxTokens;
+      else u.maxTokens = patch.maxTokens;
+    }
+    return u;
+  });
+  models.providers[providerKey] = { ...prov, models: nextModels };
+  host.configForm = base;
+  host.configFormDirty = true;
+  host.modelsFormDirty = true;
 }
 
 export function handleModelsPatchModelEnv(host: AppViewState, providerKey: string, modelId: string, envVars: Record<string, string>) {

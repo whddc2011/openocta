@@ -182,9 +182,10 @@ type SessionsResetResult struct {
 
 // SessionsDeleteResult matches the delete response from TypeScript.
 type SessionsDeleteResult struct {
-	OK       bool     `json:"ok"`
-	Key      string   `json:"key"`
-	Deleted  bool     `json:"deleted"`
+	OK      bool   `json:"ok"`
+	Key     string `json:"key"`
+	Deleted bool   `json:"deleted"`
+	// Archived lists transcript file paths removed from disk (JSON key kept for compatibility).
 	Archived []string `json:"archived"`
 }
 
@@ -699,9 +700,8 @@ func SessionsDeleteHandler(opts HandlerOpts) error {
 			if _, err := os.Stat(candidate); err != nil {
 				continue
 			}
-			archivedPath := archiveFileOnDisk(candidate, "deleted")
-			if archivedPath != "" {
-				archived = append(archived, archivedPath)
+			if removed := removeSessionTranscriptFile(candidate); removed != "" {
+				archived = append(archived, removed)
 			}
 		}
 	}
@@ -781,7 +781,7 @@ func DeleteSessionsForEmployeeID(employeeID string, ctx *Context) error {
 			candidates := resolveSessionTranscriptCandidates(entry.SessionID, storePath, entry.SessionFile, target.agentID, env)
 			for _, candidate := range candidates {
 				if _, err := os.Stat(candidate); err == nil {
-					archiveFileOnDisk(candidate, "deleted")
+					removeSessionTranscriptFile(candidate)
 				}
 			}
 		}
@@ -1228,6 +1228,14 @@ func resolveSessionTranscriptCandidates(sessionID, storePath, sessionFile, agent
 		candidates = append(candidates, filepath.Join(home, ".openclaw", "sessions", sessionID+".jsonl"))
 	}
 	return candidates
+}
+
+// removeSessionTranscriptFile permanently deletes a session transcript file from disk.
+func removeSessionTranscriptFile(filePath string) string {
+	if err := os.Remove(filePath); err != nil {
+		return ""
+	}
+	return filePath
 }
 
 // archiveFileOnDisk archives a file by renaming it with timestamp.

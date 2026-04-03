@@ -298,7 +298,12 @@ export class OpenClawApp extends LitElement implements NativeDialogInvoker {
     apiKeyPrefix: "",
   };
   @state() modelsAddModelModalOpen = false;
-  @state() modelsAddModelForm: { modelId: string; modelName: string } = { modelId: "", modelName: "" };
+  @state() modelsAddModelForm: { modelId: string; modelName: string; contextWindow: string; maxTokens: string } = {
+    modelId: "",
+    modelName: "",
+    contextWindow: "",
+    maxTokens: "",
+  };
   @state() modelsUseModelModalOpen = false;
   @state() modelsUseModelModalProvider: string | null = null;
   @state() modelsSaveError: string | null = null;

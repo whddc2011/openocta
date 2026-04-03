@@ -296,7 +296,7 @@ export type AppViewState = {
     apiKeyPrefix: string;
   };
   modelsAddModelModalOpen: boolean;
-  modelsAddModelForm: { modelId: string; modelName: string };
+  modelsAddModelForm: { modelId: string; modelName: string; contextWindow: string; maxTokens: string };
   modelsUseModelModalOpen: boolean;
   modelsUseModelModalProvider: string | null;
   modelsSaveError: string | null;

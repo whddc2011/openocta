@@ -100,6 +100,27 @@ func broadcastChatFinal(ctx *Context, runId string, sessionKey string, message m
 	}
 }
 
+// broadcastChatAborted 通知 Web/UI 客户端本次 run 已被中止，便于清除 chatRunId / 流式状态。
+func broadcastChatAborted(ctx *Context, runId string, sessionKey string) {
+	if ctx == nil || ctx.Broadcast == nil {
+		return
+	}
+	seq := int64(0)
+	if ctx.AgentRunSeq != nil {
+		seq = nextChatSeq(ctx.AgentRunSeq, runId)
+	}
+	payload := map[string]interface{}{
+		"runId":      runId,
+		"sessionKey": sessionKey,
+		"seq":        seq,
+		"state":      "aborted",
+	}
+	ctx.Broadcast("chat", payload, nil)
+	if ctx.NodeSendToSession != nil {
+		ctx.NodeSendToSession(sessionKey, "chat", payload)
+	}
+}
+
 // deliverAssistantToIM 将已格式化好的「最终可见」纯文本投递到 IM（与通道 Runtime.Send 对接；钉钉/企微/飞书共用）。
 func deliverAssistantToIM(ctx *Context, deliver *DeliverContext, plainText string) {
 	if ctx == nil || deliver == nil || strings.TrimSpace(plainText) == "" {
@@ -1036,17 +1057,9 @@ func ChatSendHandler(opts HandlerOpts) error {
 		}
 	}
 
-	// Send acknowledgment immediately
-	opts.Respond(true, map[string]interface{}{
-		"runId":  runId,
-		"status": "started",
-	}, nil, map[string]interface{}{
-		"runId": runId,
-	})
-
 	// When deliver is true, trigger agent run asynchronously
 	if message != "" {
-		// Create abort controller for this run
+		// Create abort controller for this run（须在 Respond 之前注册，避免客户端收到 started 后立即 chat.abort 时 map 中尚无 runId）
 		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutMs)*time.Millisecond)
 		now := time.Now().UnixMilli()
 		expiresAt := now + int64(timeoutMs)
@@ -1188,6 +1201,9 @@ func ChatSendHandler(opts HandlerOpts) error {
 					systemPromptOverrides = strings.TrimSpace(m.Prompt)
 				}
 			}
+			sessionAgentID := agent.ResolveSessionAgentID(sessionKey)
+			modelRefForBudget, _ := opts.Params["modelRef"].(string)
+			tokenLimit := agent.TokenLimitForSessionHistory(runtimeConfig, sessionAgentID, strings.TrimSpace(modelRefForBudget))
 			rtOpts := runtime.Options{
 				Tools:                 agentTools,
 				ModelFactory:          modelFactory,
@@ -1201,8 +1217,9 @@ func ChatSendHandler(opts HandlerOpts) error {
 				SystemPromptOverrides: systemPromptOverrides,
 				MCPServers:            mcpServers,
 				TokenTracking:         true,
-				AgentID:               agent.ResolveSessionAgentID(sessionKey), // 与 sessions jsonl 目录 ~/.openocta/agents/<agentId>/sessions 一致
+				AgentID:               sessionAgentID, // 与 sessions jsonl 目录 ~/.openocta/agents/<agentId>/sessions 一致
 				Env:                   os.Getenv,
+				TokenLimit:            tokenLimit,
 			}
 			rt, err := runtime.New(ctx, rtOpts)
 			if err != nil {
@@ -1230,6 +1247,11 @@ func ChatSendHandler(opts HandlerOpts) error {
 						reason = "已中止"
 					}
 					appendErrorToTranscript(transcriptPath, fmt.Sprintf("对话%s", reason), runId, sessionKey, ctxForBroadcast)
+					if ctx.Err() == context.Canceled {
+						broadcastChatAborted(ctxForBroadcast, runId, sessionKey)
+					} else {
+						broadcastChatError(ctxForBroadcast, runId, sessionKey, reason)
+					}
 					return
 				}
 				if runErr != nil {
@@ -1491,6 +1513,11 @@ func ChatSendHandler(opts HandlerOpts) error {
 					reason = "已中止"
 				}
 				appendErrorToTranscript(transcriptPath, fmt.Sprintf("对话%s", reason), runId, sessionKey, ctxForBroadcast)
+				if ctx.Err() == context.Canceled {
+					broadcastChatAborted(ctxForBroadcast, runId, sessionKey)
+				} else {
+					broadcastChatError(ctxForBroadcast, runId, sessionKey, reason)
+				}
 				return
 			}
 
@@ -1532,6 +1559,14 @@ func ChatSendHandler(opts HandlerOpts) error {
 			updateSessionAfterRun(ctxForBroadcast, sessionKey, sessionID, sessionFile, snapshot)
 		}()
 	}
+
+	// Send acknowledgment（在注册 abort 控制器之后，保证客户端收到 started 起即可 chat.abort）
+	opts.Respond(true, map[string]interface{}{
+		"runId":  runId,
+		"status": "started",
+	}, nil, map[string]interface{}{
+		"runId": runId,
+	})
 
 	return nil
 }

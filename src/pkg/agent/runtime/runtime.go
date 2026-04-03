@@ -65,6 +65,9 @@ func New(ctx context.Context, opts Options) (*Runtime, error) {
 		Tools:        tools,
 		ProjectRoot:  projectRoot,
 	}
+	if opts.TokenLimit > 0 {
+		apiOpts.TokenLimit = opts.TokenLimit
+	}
 	if apiOpts.SettingsOverrides == nil {
 		apiOpts.SettingsOverrides = &agentsdkConfg.Settings{}
 	}
@@ -313,7 +316,7 @@ type Options struct {
 	EnableSystemPrompt bool
 	// SystemPromptOverrides if non-empty replaces the auto-built system prompt when EnableSystemPrompt is true.
 	SystemPromptOverrides string
-	// Skylark sets api.Options.Skylark directly; when nil, mergeSkylarkOptions uses config agents.defaults.skylark and OPENOCTA_SKYLARK (default on).
+	// Skylark sets api.Options.Skylark directly; when nil, mergeSkylarkOptions uses OPENOCTA_SKYLARK, then agents.defaults.skylark; default off when unset.
 	Skylark *api.SkylarkOptions
 	// AgentRunTimeout bounds Run/RunStream when ctx has no deadline; zero uses OPENOCTA_AGENT_RUN_TIMEOUT or DefaultAgentRunTimeout (10m). See EnvAgentRunTimeout.
 	AgentRunTimeout time.Duration
@@ -329,9 +332,11 @@ type Options struct {
 	SessionHistoryRoles []string
 	// SessionHistoryTransform runs after load + SDK built-in policy (role filter / max messages).
 	SessionHistoryTransform api.SessionHistoryTransform
+	// TokenLimit is api.Options.TokenLimit: when > 0, trims conversation history to an estimated token budget (e.g. from models.providers.*.models[].contextWindow).
+	TokenLimit int
 }
 
-// mergeSkylarkOptions resolves api.SkylarkOptions: explicit opts.Skylark wins; then OPENOCTA_SKYLARK; then agents.defaults.skylark; default enabled (see agentsdk-go docs/skylark.md).
+// mergeSkylarkOptions resolves api.SkylarkOptions: explicit opts.Skylark wins; then OPENOCTA_SKYLARK; then agents.defaults.skylark; default disabled when env unset (see agentsdk-go docs/skylark.md).
 func mergeSkylarkOptions(opts Options) *api.SkylarkOptions {
 	if opts.Skylark != nil {
 		return opts.Skylark
@@ -350,7 +355,7 @@ func mergeSkylarkOptions(opts Options) *api.SkylarkOptions {
 	if o := skylarkFromAgentDefaults(opts.Config); o != nil {
 		return o
 	}
-	return &api.SkylarkOptions{Enabled: true}
+	return &api.SkylarkOptions{Enabled: false}
 }
 
 func skylarkFromAgentDefaults(cfg *config.OpenOctaConfig) *api.SkylarkOptions {

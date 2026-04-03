@@ -509,7 +509,7 @@ type AgentDefaultsConfig struct {
 	MaxConcurrent          *int                             `json:"maxConcurrent,omitempty"`
 	Subagents              *AgentSubagentsConfig            `json:"subagents,omitempty"`
 	Sandbox                *AgentSandboxConfig              `json:"sandbox,omitempty"`
-	// Skylark enables agentsdk-go progressive retrieval (see agentsdk-go docs/skylark.md). When omitted, runtime defaults to enabled unless OPENOCTA_SKYLARK=0.
+	// Skylark enables agentsdk-go progressive retrieval (see agentsdk-go docs/skylark.md). When omitted, runtime stays off unless OPENOCTA_SKYLARK enables it or agents.defaults.skylark is set.
 	Skylark *SkylarkConfig `json:"skylark,omitempty"`
 }
 

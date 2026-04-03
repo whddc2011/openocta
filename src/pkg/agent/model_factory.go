@@ -171,6 +171,60 @@ func CreateModelFactoryForModelRef(cfg *config.OpenOctaConfig, modelRef string) 
 	return createModelFactoryForProviderModel(cfg, provider, modelID)
 }
 
+// modelDefFromProviderCfg returns the model definition for resolvedModelID, or the first model when id is empty.
+func modelDefFromProviderCfg(prov config.ModelProvider, resolvedModelID string) *config.ModelDefinition {
+	foundModelID := resolvedModelID
+	if foundModelID == "" && len(prov.Models) > 0 {
+		foundModelID = prov.Models[0].ID
+	}
+	for i := range prov.Models {
+		if prov.Models[i].ID == foundModelID {
+			return &prov.Models[i]
+		}
+	}
+	return nil
+}
+
+// TokenLimitForSessionHistory returns api.Options.TokenLimit (conversation history trim budget) from
+// models.providers.*.models[].contextWindow for the effective model ref.
+func TokenLimitForSessionHistory(cfg *config.OpenOctaConfig, agentID string, modelRefOverride string) int {
+	if cfg == nil {
+		return 0
+	}
+	ref := strings.TrimSpace(modelRefOverride)
+	if ref == "" {
+		ref = resolveAgentModelRef(cfg, agentID)
+	}
+	if ref == "" || cfg.Models == nil || cfg.Models.Providers == nil {
+		return 0
+	}
+	provider, mid := resolveModelFromConfig(ref)
+	prov, ok := cfg.Models.Providers[provider]
+	if !ok {
+		return 0
+	}
+	resolved := mid
+	if resolved == "" && len(prov.Models) > 0 {
+		resolved = prov.Models[0].ID
+	} else if resolved != "" {
+		modelFound := false
+		for _, m := range prov.Models {
+			if m.ID == resolved {
+				modelFound = true
+				break
+			}
+		}
+		if !modelFound && len(prov.Models) > 0 {
+			resolved = prov.Models[0].ID
+		}
+	}
+	def := modelDefFromProviderCfg(prov, resolved)
+	if def != nil && def.ContextWindow != nil && *def.ContextWindow > 0 {
+		return *def.ContextWindow
+	}
+	return 0
+}
+
 func createModelFactoryForProviderModel(cfg *config.OpenOctaConfig, provider, modelID string) (api.ModelFactory, error) {
 
 	if cfg != nil && cfg.Models != nil && cfg.Models.Providers != nil {
@@ -200,20 +254,33 @@ func createModelFactoryForProviderModel(cfg *config.OpenOctaConfig, provider, mo
 				return nil, fmt.Errorf("no model specified for provider %s and no models defined in config.models.providers.%s", provider, provider)
 			}
 
+			var maxOut int
+			if def := modelDefFromProviderCfg(providerCfg, foundModelID); def != nil && def.MaxTokens != nil && *def.MaxTokens > 0 {
+				maxOut = *def.MaxTokens
+			}
+
 			useAnthropic := providerCfg.API != nil && (strings.EqualFold(*providerCfg.API, "anthropic-messages") || *providerCfg.API == "anthropic")
 			baseURL := strings.TrimSpace(providerCfg.BaseURL)
 			if useAnthropic {
-				return &model.AnthropicProvider{
+				ap := &model.AnthropicProvider{
 					ModelName: foundModelID,
 					APIKey:    apiKey,
 					BaseURL:   baseURL,
-				}, nil
+				}
+				if maxOut > 0 {
+					ap.MaxTokens = maxOut
+				}
+				return ap, nil
 			}
-			return &model.OpenAIProvider{
+			op := &model.OpenAIProvider{
 				ModelName: foundModelID,
 				APIKey:    apiKey,
 				BaseURL:   baseURL,
-			}, nil
+			}
+			if maxOut > 0 {
+				op.MaxTokens = maxOut
+			}
+			return op, nil
 		}
 	}
 

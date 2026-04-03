@@ -388,6 +388,7 @@ import {
   handleModelsAddModelFormChange,
   handleModelsAddModelSubmit,
   handleModelsRemoveModel,
+  handleModelsPatchModel,
   handleModelsPatchModelEnv,
   handleModelsCancel,
   handleModelsPatch,
@@ -3318,6 +3319,8 @@ export function renderApp(state: AppViewState) {
                 onAddModelFormChange: (form) => handleModelsAddModelFormChange(state, form),
                 onAddModelSubmit: (providerKey) => handleModelsAddModelSubmit(state, providerKey),
                 onRemoveModel: (providerKey, modelId) => handleModelsRemoveModel(state, providerKey, modelId),
+                onPatchModel: (providerKey, modelId, patch) =>
+                  handleModelsPatchModel(state, providerKey, modelId, patch),
                 onPatchModelEnv: (providerKey, modelId, envVars) =>
                   handleModelsPatchModelEnv(state, providerKey, modelId, envVars),
                 onSave: () => handleModelsSave(state),
