@@ -181,10 +181,16 @@ function renderEmployeeDetailActions(props: EmployeeMarketProps, detail: Employe
   if (installed) {
     return html`
       <div class="market-card-actions">
+        ${props.onEdit && localId
+          ? html`<button class="btn primary" type="button" @click=${() => props.onEdit!(localId)}>编辑</button>`
+          : nothing}
+        ${props.onOpenEmployee && localId
+          ? html`<button class="btn" type="button" @click=${() => props.onOpenEmployee!(localId)}>开始会话</button>`
+          : nothing}
         ${props.onDelete && localId
           ? html`
               <button
-                class="btn small"
+                class="btn"
                 type="button"
                 @click=${async () => {
                   if (!(await nativeConfirm(t("employeeDeleteConfirm")))) {
@@ -197,19 +203,13 @@ function renderEmployeeDetailActions(props: EmployeeMarketProps, detail: Employe
               </button>
             `
           : nothing}
-        ${props.onOpenEmployee && localId
-          ? html`<button class="btn small" type="button" @click=${() => props.onOpenEmployee!(localId)}>会话</button>`
-          : nothing}
-        ${props.onEdit && localId
-          ? html`<button class="btn primary small" type="button" @click=${() => props.onEdit!(localId)}>编辑</button>`
-          : nothing}
       </div>
     `;
   }
   if (props.onInstall) {
     return html`
       <button
-        class="btn primary small"
+        class="btn primary"
         type="button"
         ?disabled=${props.installingId === String(detail.id)}
         @click=${() => void props.onInstall!(detail.id, detail.category)}
@@ -220,7 +220,7 @@ function renderEmployeeDetailActions(props: EmployeeMarketProps, detail: Employe
   }
   return html`
     <a
-      class="btn primary small"
+      class="btn primary"
       href=${`/api/v1/employees/${detail.id}/download`}
       target="_blank"
       rel="noopener"
@@ -414,37 +414,36 @@ export function renderEmployeeMarket(props: EmployeeMarketProps) {
                             `;
                         })()}
                         <h1 id="emp-detail-title" class="emp-detail-title">${props.selectedDetail.name}</h1>
-                        <span class="emp-detail-status" data-status=${props.selectedDetail.status ?? ""}>${statusLabel(props.selectedDetail.status)}</span>
+                        <div class="emp-detail-tags">
+                          <span class="badge ghost">${statusLabel(props.selectedDetail.status)}</span>
+                          ${(props.selectedDetail.category ?? "").trim()
+                            ? html`<span class="badge ghost">${normalizeCategory(props.selectedDetail.category)}</span>`
+                            : nothing}
+                          ${(props.selectedDetail.tags ?? "").trim()
+                            ? splitCsv(props.selectedDetail.tags).map((t) => html`<span class="badge ghost">${t}</span>`)
+                            : nothing}
+                        </div>
                       </div>
                       <article class="emp-detail-summary">${props.selectedDetail.description ?? ""}</article>
-                      <div class="emp-detail-meta-row" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
+                      <div class="emp-detail-meta-row">
                         ${renderEmployeeDetailActions(props, props.selectedDetail)}
                       </div>
                     </div>
-                    <div class="emp-detail-meta-right">
-                      ${(props.selectedDetail.category ?? "").trim()
-                        ? html`<span class="badge ghost">${normalizeCategory(props.selectedDetail.category)}</span>`
-                        : nothing}
-                      ${(props.selectedDetail.tags ?? "").trim()
-                        ? splitCsv(props.selectedDetail.tags).map((t) => html`<span class="badge ghost">${t}</span>`)
-                        : nothing}
-                      <button
-                        class="emp-detail-modal__close"
-                        type="button"
-                        aria-label="关闭"
-                        @click=${props.onDetailClose}
-                      ></button>
-                    </div>
+                    <button
+                      class="emp-detail-modal__close"
+                      type="button"
+                      aria-label="关闭"
+                      @click=${props.onDetailClose}
+                    >
+                      ${icons.x}
+                    </button>
                   </div>
 
-                  ${props.selectedDetail.readme
-                    ? html`
-                        <section class="emp-detail-readme emp-detail-modal__body">
-                          <h2 class="emp-detail-readme-title">说明文档</h2>
-                          <div class="emp-detail-markdown emp-detail-content">${unsafeHTML(toSanitizedMarkdownHtml(stripFrontmatter(props.selectedDetail.readme)))}</div>
-                        </section>
-                      `
-                    : html`<div class="callout info emp-detail-modal__body">无 README</div>`}
+                  <div class="emp-detail-modal__body">
+                    ${props.selectedDetail.readme
+                      ? html`<div class="emp-detail-markdown emp-detail-content">${unsafeHTML(toSanitizedMarkdownHtml(stripFrontmatter(props.selectedDetail.readme)))}</div>`
+                      : html`<div class="emp-detail-content-empty">无 README</div>`}
+                  </div>
                 </div>
               </div>
             `

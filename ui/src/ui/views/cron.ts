@@ -2,6 +2,7 @@ import { html, nothing } from "lit";
 import type { ChannelUiMetaEntry, CronJob, CronRunLogEntry, CronStatus } from "../types.ts";
 import type { CronFormState } from "../ui-types.ts";
 import { formatAgo, formatMs } from "../format.ts";
+import { icons } from "../icons.js";
 import { nativeConfirm } from "../native-dialog-bridge.ts";
 import { pathForTab } from "../navigation.ts";
 import {
@@ -131,14 +132,14 @@ function renderCronAddModal(props: CronProps) {
             <h1 class="emp-detail-title" style="margin: 0;">${t("cronNewJob")}</h1>
             <div class="emp-detail-summary cron-config-modal__sub">${t("cronNewJobSub")}</div>
           </div>
-          <div class="emp-detail-meta-right">
-            <button
-              class="emp-detail-modal__close"
-              type="button"
-              aria-label=${t("commonCancel")}
-              @click=${props.onCloseAddModal}
-            ></button>
-          </div>
+          <button
+            class="emp-detail-modal__close"
+            type="button"
+            aria-label=${t("commonCancel")}
+            @click=${props.onCloseAddModal}
+          >
+            ${icons.x}
+          </button>
         </div>
         <div class="cron-config-modal__body">
           ${props.error ? html`<div class="callout danger">${props.error}</div>` : nothing}

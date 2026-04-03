@@ -359,9 +359,11 @@
 }
 
 .tutorials-detail-modal__actions {
+  height: 24px;
+  padding-right: 34px;
   display: flex;
-  align-items: flex-start;
-  gap: 8px;
+  align-items: center;
+  gap: 10px;
   flex-shrink: 0;
 }
 
@@ -378,10 +380,6 @@
 .tutorials-detail-modal__link:hover {
   color: var(--accent);
   text-decoration: underline;
-}
-
-.tutorials-detail-modal__body {
-  padding-top: 8px;
 }
 
 .tutorials-detail-video-context {

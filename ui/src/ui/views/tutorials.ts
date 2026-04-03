@@ -291,7 +291,9 @@ export function renderTutorials(props: TutorialsProps) {
                       type="button"
                       aria-label="关闭"
                       @click=${props.onPlayingClose}
-                    ></button>
+                    >
+                      ${icons.x}
+                    </button>
                   </div>
                 </div>
                 <div class="emp-detail-modal__body tutorials-detail-modal__body">

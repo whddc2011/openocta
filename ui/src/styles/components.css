@@ -666,7 +666,7 @@
 /* employee-market 默认 logo：与 digital-employee skills-server-card__icon 一致 */
 .emp-card__icon--default {
   background: var(--bg-content);
-  color: #45474A;
+  color: var(--text-regular);
 }
 
 .emp-card__icon--default svg {
@@ -678,8 +678,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--accent-subtle);
-  color: var(--accent);
+  background: var(--bg-content);
+  color: var(--text-regular);
 }
 
 .emp-detail-logo--default svg {

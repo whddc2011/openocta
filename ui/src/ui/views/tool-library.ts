@@ -209,10 +209,38 @@ function renderToolDetailActions(
   if (serverKey) {
     return html`
       <div class="market-card-actions">
+        ${props.onEdit
+          ? html`
+              <button
+                class="btn primary"
+                type="button"
+                @click=${(e: Event) => {
+                  e.stopPropagation();
+                  props.onEdit!(serverKey);
+                }}
+              >
+                编辑
+              </button>
+            `
+          : nothing}
+        ${props.onToggleEnabled
+          ? html`
+              <button
+                class="btn"
+                type="button"
+                @click=${(e: Event) => {
+                  e.stopPropagation();
+                  void props.onToggleEnabled!(serverKey, !enabled);
+                }}
+              >
+                ${enabled ? "禁用" : "启用"}
+              </button>
+            `
+          : nothing}
         ${props.onDelete
           ? html`
               <button
-                class="btn small"
+                class="btn"
                 type="button"
                 @click=${async (e: Event) => {
                   e.stopPropagation();
@@ -226,41 +254,13 @@ function renderToolDetailActions(
               </button>
             `
           : nothing}
-        ${props.onToggleEnabled
-          ? html`
-              <button
-                class="btn small"
-                type="button"
-                @click=${(e: Event) => {
-                  e.stopPropagation();
-                  void props.onToggleEnabled!(serverKey, !enabled);
-                }}
-              >
-                ${enabled ? "禁用" : "启用"}
-              </button>
-            `
-          : nothing}
-        ${props.onEdit
-          ? html`
-              <button
-                class="btn primary small"
-                type="button"
-                @click=${(e: Event) => {
-                  e.stopPropagation();
-                  props.onEdit!(serverKey);
-                }}
-              >
-                编辑
-              </button>
-            `
-          : nothing}
       </div>
     `;
   }
   if (props.onInstall) {
     return html`
       <button
-        class="btn small"
+        class="btn primary"
         type="button"
         ?disabled=${installing}
         @click=${(e: Event) => {
@@ -274,7 +274,7 @@ function renderToolDetailActions(
   }
   return html`
     <a
-      class="btn small"
+      class="btn primary"
       href=${`/api/v1/mcps/${item.id}/download`}
       target="_blank"
       rel="noopener"
@@ -604,9 +604,34 @@ export function renderToolLibrary(props: ToolLibraryProps) {
                 <div class="modal card emp-detail-modal emp-detail-modal--large" @click=${(e: Event) => e.stopPropagation()}>
                   <div class="emp-detail-modal__header">
                     <div class="emp-detail-header" style="flex: 1; min-width: 0;">
-                      <h1 id="emp-detail-title" class="emp-detail-title" style="margin: 0;">${props.selectedDetail.name ?? `#${props.selectedDetail.id}`}</h1>
-                      <div class="card-sub" style="margin-top: 6px;">${props.selectedDetail.description ?? ""}</div>
-                      <div class="emp-detail-meta-row" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
+                      <div class="emp-detail-title-wrap">
+                        ${(() => {
+                          const logoUrl = resolveLogoUrl(props.selectedDetail.logo_url);
+                          return logoUrl
+                            ? html`<div class="emp-detail-logo"><img src=${logoUrl} alt="" /></div>`
+                            : html`
+                                <div class="emp-detail-logo emp-detail-logo--default">
+                                  ${MCP_ICON_SVG}
+                                </div>
+                              `;
+                        })()}
+                        <h1 id="emp-detail-title" class="emp-detail-title" style="margin: 0;">
+                          ${props.selectedDetail.name ?? `#${props.selectedDetail.id}`}
+                        </h1>
+                        <div class="emp-detail-tags">
+                          ${(props.selectedDetail.category ?? "").trim()
+                            ? html`<span class="badge ghost">${normalizeCategory(props.selectedDetail.category)}</span>`
+                            : nothing}
+                          ${(props.selectedDetail.status ?? "").trim()
+                            ? html`<span class="badge ghost">${statusLabel(props.selectedDetail.status)}</span>`
+                            : nothing}
+                          ${(props.selectedDetail.tags ?? "").trim()
+                            ? splitCsv(props.selectedDetail.tags).map((t) => html`<span class="badge ghost">${t}</span>`)
+                            : nothing}
+                        </div>
+                      </div>
+                      <article class="emp-detail-summary">${props.selectedDetail.description ?? ""}</article>
+                      <div class="emp-detail-meta-row">
                         ${(() => {
                           const id = props.selectedDetail?.id ?? 0;
                           const installed = props.installedRemoteIds?.has(String(id)) ?? false;
@@ -624,28 +649,19 @@ export function renderToolLibrary(props: ToolLibraryProps) {
                         })()}
                       </div>
                     </div>
-                    <div class="emp-detail-meta-right">
-                      ${(props.selectedDetail.category ?? "").trim()
-                        ? html`<span class="badge ghost">${normalizeCategory(props.selectedDetail.category)}</span>`
-                        : nothing}
-                      ${(props.selectedDetail.status ?? "").trim()
-                        ? html`<span class="badge">${statusLabel(props.selectedDetail.status)}</span>`
-                        : nothing}
-                      ${(props.selectedDetail.tags ?? "").trim()
-                        ? splitCsv(props.selectedDetail.tags).map((t) => html`<span class="badge ghost">${t}</span>`)
-                        : nothing}
-                      <button
-                        class="emp-detail-modal__close"
-                        type="button"
-                        aria-label="关闭"
-                        @click=${closeDetail}
-                      ></button>
-                    </div>
+                    <button
+                      class="emp-detail-modal__close"
+                      type="button"
+                      aria-label="关闭"
+                      @click=${closeDetail}
+                    >
+                      ${icons.x}
+                    </button>
                   </div>
                   <div class="emp-detail-modal__body">
                     ${props.selectedDetail.readme
                       ? html`<div class="emp-detail-markdown emp-detail-content">${unsafeHTML(toSanitizedMarkdownHtml(stripFrontmatter(props.selectedDetail.readme)))}</div>`
-                      : html`<div class="callout info">无 README</div>`}
+                      : html`<div class="emp-detail-content-empty">无 README</div>`}
                   </div>
                 </div>
               </div>

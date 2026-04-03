@@ -110,6 +110,7 @@ describe("cron view", () => {
     render(renderCronConfig(createProps({ addModalOpen: true })), container);
 
     expect(container.querySelector(".cron-config-modal")).not.toBeNull();
+    expect(container.querySelector(".emp-detail-modal__close svg")).not.toBeNull();
     expect(container.textContent).toContain("New Job");
     expect(container.textContent).toContain("Add job");
   });

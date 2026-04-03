@@ -223,10 +223,24 @@ function renderSkillDetailActions(
   if (installed) {
     return html`
       <div class="market-card-actions">
+        ${props.onToggleEnabled
+          ? html`
+              <button
+                class="btn"
+                type="button"
+                @click=${(e: Event) => {
+                  e.stopPropagation();
+                  void props.onToggleEnabled!(folder, !enabled);
+                }}
+              >
+                ${enabled ? "禁用" : "启用"}
+              </button>
+            `
+          : nothing}
         ${props.onDelete
           ? html`
               <button
-                class="btn small"
+                class="btn"
                 type="button"
                 @click=${async (e: Event) => {
                   e.stopPropagation();
@@ -240,27 +254,13 @@ function renderSkillDetailActions(
               </button>
             `
           : nothing}
-        ${props.onToggleEnabled
-          ? html`
-              <button
-                class="btn small"
-                type="button"
-                @click=${(e: Event) => {
-                  e.stopPropagation();
-                  void props.onToggleEnabled!(folder, !enabled);
-                }}
-              >
-                ${enabled ? "禁用" : "启用"}
-              </button>
-            `
-          : nothing}
       </div>
     `;
   }
   if (props.onInstall) {
     return html`
       <button
-        class="btn small"
+        class="btn primary"
         type="button"
         ?disabled=${installing}
         @click=${(e: Event) => {
@@ -274,7 +274,7 @@ function renderSkillDetailActions(
   }
   return html`
     <a
-      class="btn small"
+      class="btn primary"
       href=${`/api/v1/skills/${encodeURIComponent(folder)}/download`}
       target="_blank"
       rel="noopener"
@@ -567,22 +567,40 @@ export function renderSkillLibrary(props: SkillLibraryProps) {
                 <div class="modal card emp-detail-modal emp-detail-modal--large" @click=${(e: Event) => e.stopPropagation()}>
                   <div class="emp-detail-modal__header">
                     <div class="emp-detail-header" style="flex: 1; min-width: 0;">
-                      <div class="emp-detail-title-wrap">
-                        ${(() => {
-                          const sel = props.items.find((i) => i.folder === props.selectedFolder);
-                          const logoUrl = resolveLogoUrl(
-                            props.selectedDetail?.logo_url ?? sel?.logo_url,
-                            props.gatewayHost,
-                          );
-                          return logoUrl
-                            ? html`<div class="emp-detail-logo"><img src=${logoUrl} alt="" /></div>`
-                            : html`
-                                <div class="emp-detail-logo emp-detail-logo--default">${SKILL_ICON_SVG}</div>
-                              `;
-                        })()}
-                        <h1 id="emp-detail-title" class="emp-detail-title" style="margin: 0;">${props.selectedFolder}</h1>
-                      </div>
-                      <div class="emp-detail-meta-row" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
+                      ${(() => {
+                        const sel = props.items.find((i) => i.folder === props.selectedFolder);
+                        const logoUrl = resolveLogoUrl(
+                          props.selectedDetail?.logo_url ?? sel?.logo_url,
+                          props.gatewayHost,
+                        );
+                        return html`
+                          <div class="emp-detail-title-wrap">
+                            ${logoUrl
+                              ? html`<div class="emp-detail-logo"><img src=${logoUrl} alt="" /></div>`
+                              : html`
+                                  <div class="emp-detail-logo emp-detail-logo--default">${SKILL_ICON_SVG}</div>
+                                `}
+                            <h1 id="emp-detail-title" class="emp-detail-title" style="margin: 0;">
+                              ${sel?.name || props.selectedFolder}
+                            </h1>
+                            <div class="emp-detail-tags">
+                              ${(() => {
+                                if (!sel) return nothing;
+                                const cat = normalizeCategory(sel.categoryCn);
+                                const tags = splitCsv(sel.tags);
+                                return html`
+                                  ${cat ? html`<span class="badge ghost">${cat}</span>` : nothing}
+                                  ${tags.map((t) => html`<span class="badge ghost">${t}</span>`)}
+                                `;
+                              })()}
+                            </div>
+                          </div>
+                          ${sel?.description
+                            ? html`<article class="emp-detail-summary">${sel.description}</article>`
+                            : nothing}
+                        `;
+                      })()}
+                      <div class="emp-detail-meta-row">
                         ${(() => {
                           const folder = props.selectedFolder ?? "";
                           const installed = props.installedKeys?.has(folder) ?? false;
@@ -604,29 +622,19 @@ export function renderSkillLibrary(props: SkillLibraryProps) {
                         })()}
                       </div>
                     </div>
-                    <div class="emp-detail-meta-right">
-                      ${(() => {
-                        const sel = props.items.find((it) => it.folder === props.selectedFolder);
-                        if (!sel) return nothing;
-                        const cat = normalizeCategory(sel.categoryCn);
-                        const tags = splitCsv(sel.tags);
-                        return html`
-                          ${cat ? html`<span class="badge ghost">${cat}</span>` : nothing}
-                          ${tags.map((t) => html`<span class="badge ghost">${t}</span>`)}
-                        `;
-                      })()}
-                      <button
-                        class="emp-detail-modal__close"
-                        type="button"
-                        aria-label="关闭"
-                        @click=${closeDetail}
-                      ></button>
-                    </div>
+                    <button
+                      class="emp-detail-modal__close"
+                      type="button"
+                      aria-label="关闭"
+                      @click=${closeDetail}
+                    >
+                      ${icons.x}
+                    </button>
                   </div>
                   <div class="emp-detail-modal__body">
                     ${props.selectedDetail?.content
                       ? html`<div class="emp-detail-markdown emp-detail-content">${unsafeHTML(toSanitizedMarkdownHtml(stripFrontmatter(props.selectedDetail.content)))}</div>`
-                      : html`<div class="callout info">加载中或无内容</div>`}
+                      : html`<div class="emp-detail-content-empty">无 README</div>`}
                   </div>
                 </div>
               </div>

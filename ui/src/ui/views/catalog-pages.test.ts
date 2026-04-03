@@ -284,13 +284,18 @@ describe("catalog pages", () => {
       container,
     );
 
-    const deleteButton = container.querySelector<HTMLButtonElement>(".emp-detail-modal .market-card-actions button");
+    const detailActionButtons = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(".emp-detail-modal .market-card-actions button"),
+    );
+    const deleteButton = detailActionButtons[detailActionButtons.length - 1];
+    expect(deleteButton).not.toBeUndefined();
     deleteButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    await Promise.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(nativeConfirmMock).toHaveBeenNthCalledWith(1, "确定删除此数字员工？");
     expect(onDelete).toHaveBeenCalledTimes(1);
     expect(onDelete).toHaveBeenCalledWith("test");
+    expect(container.querySelector(".emp-detail-modal__close svg")).not.toBeNull();
   });
 
   it("renders installed skill switch actions and grouped title", () => {
@@ -369,13 +374,51 @@ describe("catalog pages", () => {
       container,
     );
 
-    const deleteButton = container.querySelector<HTMLButtonElement>(".emp-detail-modal .market-card-actions button");
+    const deleteButton = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(".emp-detail-modal .market-card-actions button"),
+    ).find((button) => (button.textContent ?? "").includes("删除"));
+    expect(deleteButton).not.toBeUndefined();
     deleteButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     await Promise.resolve();
 
     expect(nativeConfirmMock).toHaveBeenNthCalledWith(1, "确定删除此技能？");
     expect(onDelete).toHaveBeenCalledTimes(1);
     expect(onDelete).toHaveBeenCalledWith("alicloud-ops");
+    expect(container.querySelector(".emp-detail-modal .emp-detail-summary")?.textContent).toContain(
+      "阿里云巡检",
+    );
+    expect(container.querySelector(".emp-detail-modal__close svg")).not.toBeNull();
+  });
+
+  it("renders skill detail title from item name when it differs from folder", () => {
+    const container = document.createElement("div");
+    renderIntoContainer(
+      renderSkillLibrary(
+        skillProps({
+          items: [
+            {
+              folder: "alicloud-ops",
+              name: "AliCloud Ops",
+              description: "阿里云巡检",
+              categoryCn: "运维自动化",
+              tags: "eligible,ecs",
+              os: "linux",
+              status: "open",
+            },
+          ],
+          selectedFolder: "alicloud-ops",
+          selectedDetail: {
+            folder: "alicloud-ops",
+            content: "# Skill",
+          },
+        }),
+      ),
+      container,
+    );
+
+    expect(container.querySelector(".emp-detail-modal .emp-detail-title")?.textContent).toContain(
+      "AliCloud Ops",
+    );
   });
 
   it("searches installed skills as well", () => {
@@ -476,6 +519,9 @@ describe("catalog pages", () => {
     expect(switchEl?.classList.contains("is-checked")).toBe(true);
     expect(switchInput?.checked).toBe(true);
     expect(container.querySelector(".emp-detail-modal")).not.toBeNull();
+    expect(container.querySelector(".emp-detail-modal .emp-detail-title-wrap")).not.toBeNull();
+    expect(container.querySelector(".emp-detail-modal .emp-detail-logo")).not.toBeNull();
+    expect(container.querySelector(".emp-detail-modal__close svg")).not.toBeNull();
 
     const counts = computeToolLibraryCategories(toolItems(), "prom");
     expect(counts.counts.get("__all__")).toBe(1);
@@ -550,9 +596,13 @@ describe("catalog pages", () => {
       container,
     );
 
-    const deleteButton = container.querySelector<HTMLButtonElement>(".emp-detail-modal .market-card-actions button");
+    const detailActionButtons = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(".emp-detail-modal .market-card-actions button"),
+    );
+    const deleteButton = detailActionButtons[detailActionButtons.length - 1];
+    expect(deleteButton).not.toBeUndefined();
     deleteButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    await Promise.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(nativeConfirmMock).toHaveBeenNthCalledWith(1, "确定删除此 MCP 服务器？");
     expect(onDelete).toHaveBeenCalledTimes(1);
@@ -617,8 +667,8 @@ describe("catalog pages", () => {
       container,
     );
 
-    const talkButton = Array.from(container.querySelectorAll("button")).find(
-      (button) => button.textContent?.trim() === "会话",
+    const talkButton = Array.from(container.querySelectorAll<HTMLButtonElement>(".emp-detail-modal button")).find(
+      (button) => (button.textContent ?? "").includes("开始会话"),
     );
     expect(talkButton).not.toBeUndefined();
     talkButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -645,6 +695,7 @@ describe("catalog pages", () => {
       container,
     );
     expect(container.querySelector(".emp-detail-modal")).not.toBeNull();
+    expect(container.querySelector(".emp-detail-modal__close svg")).not.toBeNull();
     expect(container.querySelector("iframe")).not.toBeNull();
     expect(container.textContent).toContain("在哔哩哔哩打开");
   });
