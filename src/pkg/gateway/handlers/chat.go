@@ -1797,11 +1797,9 @@ func ChatAbortHandler(opts HandlerOpts) error {
 
 	ctrl := existing.(*ChatAbortController)
 	if ctrl.SessionKey != sessionKey {
-		opts.Respond(false, nil, &protocol.ErrorShape{
-			Code:    protocol.ErrCodeInvalidRequest,
-			Message: "runId does not match sessionKey",
-		}, nil)
-		return nil
+		// 记录警告日志，但仍允许停止操作（runId本身已唯一标识运行实例）
+		chatLog.Warn("chat.abort sessionKey mismatch but allowing: runId=%s storedSessionKey=%s receivedSessionKey=%s",
+			runId, ctrl.SessionKey, sessionKey)
 	}
 
 	ctrl.Controller()
