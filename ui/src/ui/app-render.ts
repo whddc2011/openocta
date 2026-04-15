@@ -2250,6 +2250,7 @@ export function renderApp(state: AppViewState) {
                 skillEditSaving: state.skillLibraryEditSaving,
                 skillEditError: state.skillLibraryEditError,
                 skillEditSyntaxError: state.skillLibraryEditSyntaxError,
+                skillEditSuccessMessage: state.skillLibraryEditSuccessMessage,
                 onSkillEditOpen: async (folder) => {
                   state.skillLibraryEditModalOpen = true;
                   state.skillLibraryEditSkillKey = folder;
@@ -2283,6 +2284,7 @@ export function renderApp(state: AppViewState) {
                   state.skillLibraryEditOriginalContent = "";
                   state.skillLibraryEditError = null;
                   state.skillLibraryEditSyntaxError = null;
+                  state.skillLibraryEditSuccessMessage = null;
                 },
                 onSkillEditFileSelect: async (path) => {
                   if (state.skillLibraryEditSaving) return;
@@ -2322,6 +2324,10 @@ export function renderApp(state: AppViewState) {
                     state.skillLibraryEditOriginalContent = state.skillLibraryEditContent;
                     await loadSkills(state);
                     await onRefresh();
+                    state.skillLibraryEditSuccessMessage = "保存成功";
+                    window.setTimeout(() => {
+                      state.skillLibraryEditSuccessMessage = null;
+                    }, 2000);
                   }
                 },
                 });

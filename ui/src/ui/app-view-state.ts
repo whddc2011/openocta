@@ -382,6 +382,7 @@ export type AppViewState = {
   skillLibraryEditSaving: boolean;
   skillLibraryEditError: string | null;
   skillLibraryEditSyntaxError: string | null;
+  skillLibraryEditSuccessMessage: string | null;
 
   toolLibraryLoadedOnce: boolean;
   toolLibraryLoading: boolean;

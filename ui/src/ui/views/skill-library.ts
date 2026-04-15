@@ -79,6 +79,7 @@ export type SkillLibraryProps = {
   skillEditSaving?: boolean;
   skillEditError?: string | null;
   skillEditSyntaxError?: string | null;
+  skillEditSuccessMessage?: string | null;
   onSkillEditOpen?: (folder: string) => void;
   onSkillEditClose?: () => void;
   onSkillEditFileSelect?: (path: string) => void;
@@ -807,6 +808,7 @@ function renderSkillEditorModal(props: SkillLibraryProps) {
       <div
         class="modal card"
         style="
+          position: relative;
           width: min(1200px, 96vw);
           height: min(840px, 92vh);
           max-width: 96vw;
@@ -833,6 +835,29 @@ function renderSkillEditorModal(props: SkillLibraryProps) {
             ${icons.x}
           </button>
         </div>
+
+        ${props.skillEditSuccessMessage
+          ? html`
+              <div
+                style="
+                  position: absolute;
+                  top: 12px;
+                  right: 56px;
+                  padding: 8px 16px;
+                  border-radius: 6px;
+                  background: #dcfce7;
+                  color: #166534;
+                  font-size: 13px;
+                  font-weight: 500;
+                  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+                  z-index: 10;
+                  pointer-events: none;
+                "
+              >
+                ${props.skillEditSuccessMessage}
+              </div>
+            `
+          : nothing}
 
         <div class="row" style="flex: 1; min-height: 0; overflow: hidden; align-items: stretch;">
           <!-- File tree -->

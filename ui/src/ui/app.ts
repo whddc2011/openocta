@@ -511,6 +511,7 @@ export class OpenClawApp extends LitElement implements NativeDialogInvoker {
   @state() skillLibraryEditSaving = false;
   @state() skillLibraryEditError: string | null = null;
   @state() skillLibraryEditSyntaxError: string | null = null;
+  @state() skillLibraryEditSuccessMessage: string | null = null;
 
   @state() toolLibraryLoadedOnce = false;
   @state() toolLibraryLoading = false;
