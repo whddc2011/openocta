@@ -637,10 +637,15 @@ export function renderModelsOverlays(props: ModelsProps) {
                     <span class="input"><input
                       type="text"
                       .value=${props.addModelForm.modelId}
-                      placeholder="e.g. qwen3-max"
+                      placeholder=${props.selectedProvider === "ollama" ? "e.g. llama3.3:latest" : "e.g. qwen3-max"}
                       @input=${(e: Event) =>
                         props.onAddModelFormChange({ modelId: (e.target as HTMLInputElement).value })}
                     /></span>
+                    ${props.selectedProvider === "ollama"
+                      ? html`<small style="font-size: 11px; color: var(--color-warning, #d97706);">
+                          模型 ID 必须与本地 Ollama 执行 <code>ollama list</code> 命令显示的 NAME 完全一致
+                        </small>`
+                      : nothing}
                   </div>
                   <div class="field">
                     <span>${t("modelsModelName")} *</span>
