@@ -624,10 +624,14 @@ export function renderToolLibrary(props: ToolLibraryProps) {
                             ? html`<span class="badge ghost">${statusLabel(props.selectedDetail.status)}</span>`
                             : nothing}
                           ${(() => {
+                            const detailCategory = normalizeCategory(props.selectedDetail.category);
                             const detailTags = splitCsv(props.selectedDetail.tags);
-                            const visibleDetailTags = effectiveCategory && effectiveCategory !== "__all__"
-                              ? detailTags.filter((t) => t !== effectiveCategory)
-                              : detailTags;
+                            const visibleDetailTags = detailTags.filter((t) => {
+                              const nt = normalizeCategory(t);
+                              if (nt === detailCategory) return false;
+                              if (effectiveCategory && effectiveCategory !== "__all__" && nt === effectiveCategory) return false;
+                              return true;
+                            });
                             return visibleDetailTags.map((t) => html`<span class="badge ghost">${t}</span>`);
                           })()}
                         </div>

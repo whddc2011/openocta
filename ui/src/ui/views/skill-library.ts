@@ -316,13 +316,17 @@ function renderSkillDetailActions(
   `;
 }
 
-function renderSkillMeta(tags: string[], os: string[], status: string) {
+function renderSkillMeta(tags: string[], os: string[], status: string, currentCategory?: string) {
+  const isInSingleCategoryView = currentCategory && currentCategory !== "__all__";
+  const visibleTags = isInSingleCategoryView
+    ? tags.filter((t) => t !== currentCategory)
+    : tags;
   return html`
     <div class="market-card-meta">
       ${status
         ? html`<span class="market-card-chip">${status}</span>`
         : html`<span class="market-card-chip market-card-chip--muted">未标注</span>`}
-      ${tags.slice(0, 3).map((t) => html`<span class="market-card-chip">${t}</span>`)}
+      ${visibleTags.slice(0, 3).map((t) => html`<span class="market-card-chip">${t}</span>`)}
       ${os.length > 0 ? html`<span class="market-card-chip">OS: ${os.join("/")}</span>` : nothing}
     </div>
   `;
@@ -428,7 +432,7 @@ export function renderSkillLibrary(props: SkillLibraryProps) {
                                     </div>
                                     <h3 class="emp-card__title">${it.name || it.folder}</h3>
                                     <p class="emp-card__desc">${it.description ?? it.folder ?? "暂无描述"}</p>
-                                    ${renderSkillMeta(tags, os, status)}
+                                    ${renderSkillMeta(tags, os, status, activeCategory)}
                                   </div>
                                 </div>
                               `;
@@ -475,7 +479,7 @@ export function renderSkillLibrary(props: SkillLibraryProps) {
                                             </div>
                                             <h3 class="emp-card__title">${it.name || it.folder}</h3>
                                             <p class="emp-card__desc">${it.description ?? it.folder ?? "暂无描述"}</p>
-                                            ${renderSkillMeta(tags, os, status)}
+                                            ${renderSkillMeta(tags, os, status, activeCategory)}
                                           </div>
                                         </div>
                                       `;
@@ -617,10 +621,17 @@ export function renderSkillLibrary(props: SkillLibraryProps) {
                               ${(() => {
                                 if (!sel) return nothing;
                                 const cat = normalizeCategory(sel.categoryCn);
+                                const hideDetailCategory = activeCategory && activeCategory !== "__all__" && cat === activeCategory;
                                 const tags = splitCsv(sel.tags);
+                                const visibleTags = tags.filter((t) => {
+                                  const nt = normalizeCategory(t);
+                                  if (nt === cat) return false;
+                                  if (activeCategory && activeCategory !== "__all__" && nt === activeCategory) return false;
+                                  return true;
+                                });
                                 return html`
-                                  ${cat ? html`<span class="badge ghost">${cat}</span>` : nothing}
-                                  ${tags.map((t) => html`<span class="badge ghost">${t}</span>`)}
+                                  ${cat && !hideDetailCategory ? html`<span class="badge ghost">${cat}</span>` : nothing}
+                                  ${visibleTags.map((t) => html`<span class="badge ghost">${t}</span>`)}
                                 `;
                               })()}
                             </div>

@@ -1732,12 +1732,8 @@ export function renderApp(state: AppViewState) {
                   state.employeeMarketLoading = true;
                   state.employeeMarketError = null;
                   try {
-                    const category =
-                      state.employeeMarketCategory && state.employeeMarketCategory !== "__all__"
-                        ? state.employeeMarketCategory
-                        : undefined;
                     state.employeeMarketItems = await fetchEmployees(
-                      { q: state.employeeMarketQuery, category },
+                      { q: state.employeeMarketQuery },
                       { gatewayHost: state.settings?.gatewayUrl?.trim(), token: state.settings?.token?.trim() },
                     );
                     // 从 API 响应（含 .install-metadata.json）推导已安装状态，刷新后仍可识别
@@ -1947,12 +1943,8 @@ export function renderApp(state: AppViewState) {
                 state.employeeMarketLoading = true;
                 state.employeeMarketError = null;
                 try {
-                  const category =
-                    state.employeeMarketCategory && state.employeeMarketCategory !== "__all__"
-                      ? state.employeeMarketCategory
-                      : undefined;
                   state.employeeMarketItems = await fetchEmployees(
-                    { q: state.employeeMarketQuery, category },
+                    { q: state.employeeMarketQuery },
                     { gatewayHost: state.settings?.gatewayUrl?.trim(), token: state.settings?.token?.trim() },
                   );
                 } catch (err) {
@@ -3828,12 +3820,8 @@ export function renderApp(state: AppViewState) {
                   void loadDigitalEmployees(state);
                   if (state.tab === "employeeMarket") {
                     state.employeeMarketError = null;
-                    const category =
-                      state.employeeMarketCategory && state.employeeMarketCategory !== "__all__"
-                        ? state.employeeMarketCategory
-                        : undefined;
                     void fetchEmployees(
-                      { q: state.employeeMarketQuery, category },
+                      { q: state.employeeMarketQuery },
                       { gatewayHost: state.settings?.gatewayUrl?.trim(), token: state.settings?.token?.trim() },
                     ).then(
                       (items) => (state.employeeMarketItems = items),

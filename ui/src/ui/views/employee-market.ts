@@ -86,11 +86,15 @@ function splitCsv(raw?: string) {
 
 const EMP_CARD_TAGS_MAX = 3;
 
-function renderCardTags(tagsRaw?: string) {
+function renderCardTags(tagsRaw?: string, currentCategory?: string) {
   const tags = splitCsv(tagsRaw);
-  if (tags.length === 0) return null;
-  const show = tags.slice(0, EMP_CARD_TAGS_MAX);
-  const hasMore = tags.length > EMP_CARD_TAGS_MAX;
+  const isInSingleCategoryView = currentCategory && currentCategory !== "__all__";
+  const visibleTags = isInSingleCategoryView
+    ? tags.filter((t) => t !== currentCategory)
+    : tags;
+  if (visibleTags.length === 0) return null;
+  const show = visibleTags.slice(0, EMP_CARD_TAGS_MAX);
+  const hasMore = visibleTags.length > EMP_CARD_TAGS_MAX;
   return html`
     <div class="market-card-meta">
       ${show.map((t) => html`<span class="market-card-chip">${t}</span>`)}
@@ -326,7 +330,7 @@ export function renderEmployeeMarket(props: EmployeeMarketProps) {
                                     </div>
                                     <h3 class="emp-card__title">${it.name}</h3>
                                     <p class="emp-card__desc">${it.description ?? "暂无描述"}</p>
-                                    ${renderCardTags(it.tags)}
+                                    ${renderCardTags(it.tags, effectiveCategory)}
                                   </div>
                                 </div>
                               `;
@@ -368,7 +372,7 @@ export function renderEmployeeMarket(props: EmployeeMarketProps) {
                                                   </div>
                                                   <h3 class="emp-card__title">${it.name}</h3>
                                                   <p class="emp-card__desc">${it.description ?? "暂无描述"}</p>
-                                                  ${renderCardTags(it.tags)}
+                                                  ${renderCardTags(it.tags, effectiveCategory)}
                                                 </div>
                                               </div>
                                             `;
@@ -416,12 +420,26 @@ export function renderEmployeeMarket(props: EmployeeMarketProps) {
                         <h1 id="emp-detail-title" class="emp-detail-title">${props.selectedDetail.name}</h1>
                         <div class="emp-detail-tags">
                           <span class="badge ghost">${statusLabel(props.selectedDetail.status)}</span>
-                          ${(props.selectedDetail.category ?? "").trim()
-                            ? html`<span class="badge ghost">${normalizeCategory(props.selectedDetail.category)}</span>`
-                            : nothing}
-                          ${(props.selectedDetail.tags ?? "").trim()
-                            ? splitCsv(props.selectedDetail.tags).map((t) => html`<span class="badge ghost">${t}</span>`)
-                            : nothing}
+                          ${(() => {
+                            const detailCategory = normalizeCategory(props.selectedDetail.category);
+                            const hideDetailCategory = effectiveCategory && effectiveCategory !== "__all__" && detailCategory === effectiveCategory;
+                            return (props.selectedDetail.category ?? "").trim() && !hideDetailCategory
+                              ? html`<span class="badge ghost">${detailCategory}</span>`
+                              : nothing;
+                          })()}
+                          ${(() => {
+                            const detailCategory = normalizeCategory(props.selectedDetail.category);
+                            const detailTags = splitCsv(props.selectedDetail.tags);
+                            const visibleDetailTags = detailTags.filter((t) => {
+                              const nt = normalizeCategory(t);
+                              if (nt === detailCategory) return false;
+                              if (effectiveCategory && effectiveCategory !== "__all__" && nt === effectiveCategory) return false;
+                              return true;
+                            });
+                            return visibleDetailTags.length > 0
+                              ? visibleDetailTags.map((t) => html`<span class="badge ghost">${t}</span>`)
+                              : nothing;
+                          })()}
                         </div>
                       </div>
                       <article class="emp-detail-summary">${props.selectedDetail.description ?? ""}</article>
