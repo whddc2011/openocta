@@ -6,6 +6,7 @@
 # macOS Wails .dmg（arm64 + amd64）：
 # - 仅在 macOS 上可构建；设置 GORELEASER_INCLUDE_DMG=1 时运行 scripts/goreleaser-wails-dmg.sh。
 # - release.extra_files 使用 dist-mac/OpenOcta*.dmg（与 deploy/macos/build-app.sh 一致；勿写入 dist/）。
+# - 若需要签名/公证：安装 gon，并设置 OPENOCTA_GON=1 + AC_USERNAME/AC_PASSWORD/AC_TEAM_ID（参见 gon-sign.json）。
 # - 勿使用多个 -f：GoReleaser 只认最后一个配置文件，会丢失 builds 并报「does not contain a main function」。
 
 version: 2

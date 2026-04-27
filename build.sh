@@ -1,6 +1,6 @@
 #!/bin/bash
 # OpenOcta 构建脚本
-# 用法: ./build.sh [ui|embed|go|build|clean|snapshot|release|docker|wails|wails-nsis]
+# 用法: ./build.sh [ui|embed|go|build|clean|snapshot|release|docker|wails|wails-dmg|wails-dmg-signed|wails-nsis]
 # 默认: build（完整构建）
 
 set -e
@@ -77,6 +77,16 @@ do_wails() {
     cp -R src/build/bin/* dist/ 2>/dev/null || true
     echo "==> 产物已复制到 dist/"
   fi
+}
+
+do_wails_dmg() {
+  echo "==> Wails macOS DMG 打包..."
+  make wails-dmg
+}
+
+do_wails_dmg_signed() {
+  echo "==> Wails macOS DMG（gon 签名/公证）打包..."
+  make wails-dmg-signed
 }
 
 # 解析存有 makensis.exe 的目录（Unix 风格路径，如 /c/Program Files (x86)/NSIS）；找不到返回 1。
@@ -180,9 +190,11 @@ case "${1:-build}" in
   release) do_release ;;
   docker) do_docker ;;
   wails) do_wails ;;
+  wails-dmg) do_wails_dmg ;;
+  wails-dmg-signed) do_wails_dmg_signed ;;
   wails-nsis) do_wails_nsis ;;
   *)
-    echo "用法: $0 [ui|embed|go|build|clean|snapshot|release|docker|wails|wails-nsis]"
+    echo "用法: $0 [ui|embed|go|build|clean|snapshot|release|docker|wails|wails-dmg|wails-dmg-signed|wails-nsis]"
     echo "  ui       - 仅构建前端"
     echo "  embed    - 构建前端并复制 embed 资源"
     echo "  go       - 完整构建（前端+embed+Go）"
@@ -192,6 +204,8 @@ case "${1:-build}" in
     echo "  release    - GoReleaser 正式发布"
     echo "  docker     - Docker 镜像构建"
     echo "  wails      - Wails 桌面应用（macOS .app / Windows .exe）"
+    echo "  wails-dmg  - macOS .dmg（不签名/不公证）"
+    echo "  wails-dmg-signed - macOS .dmg（gon 签名/公证；需 AC_USERNAME/AC_PASSWORD/AC_TEAM_ID）"
     echo "  wails-nsis - Wails Windows 安装器（需在 Windows 上执行）"
     exit 1
     ;;

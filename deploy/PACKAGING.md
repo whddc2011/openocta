@@ -10,9 +10,14 @@
 |------|------|------|
 | `make wails` | Wails 桌面应用（当前平台） | `src/build/bin/OpenOcta.app`（macOS）或 `OpenOcta.exe`（Windows） |
 | `make wails-dmg` | macOS .dmg（当前机架构） | `dist-mac/OpenOcta.app`、`dist-mac/OpenOcta-<version>.dmg` |
+| `make wails-dmg-signed` | macOS .dmg（gon 签名/公证 + staple） | `dist-mac/OpenOcta.app`、`dist-mac/OpenOcta-<version>.dmg` |
 | `make wails-dmg-arm64` / `wails-dmg-amd64` | 分别打 Apple Silicon / Intel 的 .dmg | `dist-mac/OpenOcta-<version>-darwin-arm64.dmg` 等 |
+| `make wails-dmg-arm64-signed` / `wails-dmg-amd64-signed` | 分别打 Apple Silicon / Intel 的 .dmg（gon 签名/公证 + staple） | `dist-mac/OpenOcta-<version>-darwin-arm64.dmg` 等 |
 | `make wails-dmg-all` | 连续构建上述两个架构（仅 macOS） | 两个 `.dmg` |
+| `make wails-dmg-all-signed` | 连续构建双架构 .dmg（gon 签名/公证 + staple） | 两个 `.dmg` |
 | `./build.sh wails` | 同 `make wails`，并复制到 `dist/` | `dist/` 下的 .app 或 .exe |
+| `./build.sh wails-dmg` | macOS .dmg（不签名/不公证） | `dist-mac/OpenOcta.app`、`dist-mac/OpenOcta-<version>.dmg` |
+| `./build.sh wails-dmg-signed` | macOS .dmg（gon 签名/公证 + staple） | `dist-mac/OpenOcta.app`、`dist-mac/OpenOcta-<version>.dmg` |
 | `./build.sh wails-nsis` | Windows NSIS 安装器（**需在 Windows 上执行**） | `src/build/bin/OpenOcta-amd64-installer.exe` |
 | `./deploy/macos/build-app.sh` | macOS .app + .dmg 打包 | `dist-mac/OpenOcta.app`、`dist-mac/OpenOcta-<version>.dmg` |
 
@@ -74,10 +79,14 @@ make wails
 
 # 构建 .app 并打包 .dmg
 make wails-dmg
+
+# 构建 .app，使用 gon 签名/公证 + staple，然后打包 .dmg
+# 需要环境变量：AC_USERNAME / AC_PASSWORD / AC_TEAM_ID（见 gon-sign.json）
+make wails-dmg-signed
 ```
 
 - `.app` 输出：`src/build/bin/OpenOcta.app`
-- `wails-dmg` 会调用 `./deploy/macos/build-app.sh`，产物在 `dist/`
+- `wails-dmg` / `wails-dmg-signed` 会调用 `./deploy/macos/build-app.sh`，产物在 `dist-mac/`
 
 #### 方式二：deploy 脚本
 
@@ -92,6 +101,26 @@ make wails-dmg
 - 产物：`dist-mac/OpenOcta.app`、`dist-mac/OpenOcta-<version>.dmg`（`dist-mac` 与 GoReleaser 的 `dist/` 分离，避免 before 钩子里生成 DMG 后触发「dist is not empty」。）
 - 版本号来自 `git describe --tags`
 
+#### 使用 gon 对 .app 签名/公证（推荐用于分发）
+
+本仓库通过 `gon` 对 `src/build/bin/OpenOcta.app` 做签名+公证，并在成功后 staple。
+
+- 配置文件：`gon-sign.json`（已改为从环境变量读取凭据，避免明文泄露）
+- 启用方式：设置 `OPENOCTA_GON=1`（`deploy/macos/build-app.sh` 会在打 DMG 前执行 `gon`）
+- 需要的环境变量：
+  - `AC_USERNAME`：Apple ID
+  - `AC_PASSWORD`：App-Specific Password（建议在 Keychain/CI Secret 中注入，勿写入文件/仓库）
+  - `AC_TEAM_ID`：Team ID
+
+示例（本机）：
+
+```bash
+export AC_USERNAME="you@example.com"
+export AC_PASSWORD="xxxx-xxxx-xxxx-xxxx"
+export AC_TEAM_ID="ABCDE12345"
+make wails-dmg-signed
+```
+
 #### 双架构 .dmg（arm64 + amd64）
 
 **不可**在 Linux 上交叉编译 Wails macOS 应用；请在 **本机 macOS** 或 **GitHub Actions `macos-latest`** 上执行。
@@ -101,6 +130,9 @@ make wails-dmg-all
 # 或单独：
 make wails-dmg-arm64
 make wails-dmg-amd64
+
+# 签名/公证版（gon）
+make wails-dmg-all-signed
 ```
 
 - 产物示例：`dist-mac/OpenOcta-<version>-darwin-arm64.dmg`、`dist-mac/OpenOcta-<version>-darwin-amd64.dmg`
@@ -109,13 +141,19 @@ make wails-dmg-amd64
 #### GoReleaser 附加 DMG 与 GitHub Release
 
 1. **钩子**（`.goreleaser.yaml` → `before.hooks`）：`scripts/goreleaser-wails-dmg.sh`  
-   - 仅当 **`GORELEASER_INCLUDE_DMG=1`** 且在 **Darwin** 上运行时，会执行 `make embed && make wails-dmg-all`。  
+   - 仅当 **`GORELEASER_INCLUDE_DMG=1`** 且在 **Darwin** 上运行时，会执行 `make embed` 并构建 DMG：  
+     - 未设置 `OPENOCTA_GON=1`：执行 `make wails-dmg-all`  
+     - 设置 `OPENOCTA_GON=1`：执行 `make wails-dmg-all-signed`（签名/公证 + staple）  
    - Linux CI 请勿设置该变量，钩子会跳过。
 
 2. **上传 DMG**：`.goreleaser.yaml` 的 `release.extra_files` 已包含 `glob: ./dist-mac/OpenOcta*.dmg`（与 `deploy/macos/build-app.sh` 输出目录一致）；存在则随 Release 上传，不存在则跳过（Linux-only 流水线也可共用同一配置）。
 
    ```bash
    export GORELEASER_INCLUDE_DMG=1   # 仅 macOS 打 DMG 时需要
+   export OPENOCTA_GON=1            # 可选：让 GoReleaser 产线生成“已签名/已公证”的 DMG
+   export AC_USERNAME="you@example.com"
+   export AC_PASSWORD="xxxx-xxxx-xxxx-xxxx"
+   export AC_TEAM_ID="ABCDE12345"
    goreleaser release --clean -f .goreleaser.yaml
    ```
 
@@ -214,6 +252,8 @@ make clean
 |------|------|
 | `./build.sh build` | 完整构建（ui → embed → go），产出 Linux 二进制 `openocta` |
 | `./build.sh wails` | Wails 桌面应用，当前平台 |
+| `./build.sh wails-dmg` | macOS .dmg（不签名/不公证） |
+| `./build.sh wails-dmg-signed` | macOS .dmg（gon 签名/公证 + staple；需 `AC_USERNAME/AC_PASSWORD/AC_TEAM_ID`） |
 | `./build.sh wails-nsis` | Windows NSIS 安装器（仅 Windows） |
 | `./build.sh snapshot` | GoReleaser 快照（Linux deb/rpm/tar.gz） |
 | `./build.sh release` | GoReleaser 正式发布 |

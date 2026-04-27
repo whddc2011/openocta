@@ -20,7 +20,12 @@ cd "${ROOT}"
 
 echo "goreleaser-wails-dmg: building embed + dual-arch DMGs..."
 make embed
-make wails-dmg-all
+if [[ "${OPENOCTA_GON:-0}" = "1" ]]; then
+  echo "goreleaser-wails-dmg: OPENOCTA_GON=1 -> use gon signing/notarization"
+  make wails-dmg-all-signed
+else
+  make wails-dmg-all
+fi
 
 echo "goreleaser-wails-dmg: done:"
 ls -la "${ROOT}/dist-mac/"OpenOcta*.dmg 2>/dev/null || true

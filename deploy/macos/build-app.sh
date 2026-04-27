@@ -10,6 +10,9 @@ set -euo pipefail
 #   ARCH=arm64|amd64   — 写入 DMG 文件名后缀 -darwin-<ARCH>（便于区分双架构产物）
 #   OPENOCTA_MAC_DIST  — macOS 产物目录，默认 <仓库根>/dist-mac（勿用 dist/：GoReleaser 的 before
 #                        钩子跑完后会要求 dist 为空，否则会报错 dist is not empty）
+#   OPENOCTA_GON=1     — 使用 gon 对 src/build/bin/OpenOcta.app 做签名+公证+staple（需已安装 gon）
+#   GON_CONFIG         — gon 配置文件路径（默认 <仓库根>/gon-sign.json）
+#   AC_USERNAME / AC_PASSWORD / AC_TEAM_ID — gon 配置中的 Apple ID 凭据（推荐使用 App-Specific Password）
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
@@ -30,6 +33,25 @@ APP="${ROOT}/src/build/bin/OpenOcta.app"
 if [[ ! -d "${APP}" ]]; then
   echo "未找到 OpenOcta.app，构建可能失败" >&2
   exit 1
+fi
+
+if [[ "${OPENOCTA_GON:-0}" = "1" ]]; then
+  if [[ "$(uname -s)" != "Darwin" ]]; then
+    echo "WARN: OPENOCTA_GON=1 但当前不是 macOS，跳过 gon" >&2
+  elif ! command -v gon >/dev/null 2>&1; then
+    echo "ERROR: OPENOCTA_GON=1 但未找到 gon。请先安装: brew install mitchellh/gon/gon" >&2
+    exit 1
+  else
+    GON_CFG="${GON_CONFIG:-${ROOT}/gon-sign.json}"
+    if [[ ! -f "${GON_CFG}" ]]; then
+      echo "ERROR: 未找到 gon 配置: ${GON_CFG}" >&2
+      exit 1
+    fi
+    echo "==> gon: 对 OpenOcta.app 进行签名/公证（配置: ${GON_CFG}）..."
+    # gon 会读取配置内的 source；本仓库默认配置指向 ./src/build/bin/OpenOcta.app
+    gon "${GON_CFG}"
+    echo "==> gon: 完成"
+  fi
 fi
 
 mkdir -p "${MAC_DIST}"
